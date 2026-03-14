@@ -6,22 +6,19 @@
 <title>Dairy Queen Admin Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
-body {font-family:Arial;background:#fff5f5;text-align:center;padding:20px;}
-.container {max-width:1000px;margin:auto;background:white;padding:30px;border-radius:10px;box-shadow:0 0 15px rgba(0,0,0,0.1);}
+body {font-family: Arial; background:#fff5f5; text-align:center; padding:20px;}
+.container {max-width:1200px; margin:auto; background:white; padding:30px; border-radius:10px; box-shadow:0 0 15px rgba(0,0,0,0.1);}
 h1 {color:#d71920;}
 h2 {color:#0057a4;}
 canvas {margin-top:30px;}
-#recommendChart {max-width:300px;margin:20px auto;}
-table {width:100%;border-collapse:collapse;margin-top:30px;}
-th, td {border:1px solid #ccc;padding:8px;text-align:center;}
-th {background:#d71920;color:white;}
+#recommendChart {max-width:300px; margin:20px auto;}
+table {width:100%; border-collapse:collapse; margin-top:30px;}
+th, td {border:1px solid #ccc; padding:8px; text-align:center;}
+th {background:#d71920; color:white;}
 tr:nth-child(even){background:#f9f9f9;}
 td.comments {text-align:left; max-width:300px; word-wrap:break-word;}
 .highlight {animation: highlightAnim 2s ease;}
-@keyframes highlightAnim {
-  0% {background-color: #ffff99;}
-  100% {background-color: transparent;}
-}
+@keyframes highlightAnim {0% {background-color: #ffff99;} 100% {background-color: transparent;}}
 </style>
 </head>
 <body>
@@ -52,7 +49,7 @@ td.comments {text-align:left; max-width:300px; word-wrap:break-word;}
 </div>
 
 <script>
-const SHEET_JSON_URL = "https://script.google.com/macros/s/AKfycbw9gafZnaWWHhvFfZrXe-2v1VNQKxwnCwNc0Z6h6N2DsrK1IFL5tD1aspnUMPzT7T7g3g/exec"; // replace with your Apps Script URL
+const SHEET_JSON_URL = "https://script.google.com/macros/s/AKfycbx_RmCNaG8ib2A_RA-cL3yn5UT4UIYMtOtF2wbqA2q736s3AeIcaRjG6S4Iy9fPwyaBKg/exec"; // Replace with your Apps Script Web App URL
 let ratingChart = null;
 let recommendChart = null;
 let previousTimestamps = new Set();
@@ -69,13 +66,13 @@ async function fetchFeedback(){
     // Map to fixed columns
     return raw.map(d=>({
       Timestamp: safeValue(d.Timestamp),
-      Overall_Rating: safeNumber(d.Overall_Rating),
-      Taste_Rating: safeNumber(d.Taste_Rating),
+      Overall_RATING: safeNumber(d.Overall_RATING),
+      Taste_RATING: safeNumber(d.Taste_RATING),
       Service_RATING: safeNumber(d.Service_RATING),
       Cleanliness_RATING: safeNumber(d.Cleanliness_RATING),
       Recommend: safeValue(d.Recommend),
       Comments: safeValue(d.Comments),
-      Average_Rating: safeNumber(d.Average_Rating)
+      Average_RATING: safeNumber(d.Average_RATING)
     }));
   }catch(err){
     console.error(err);
@@ -87,7 +84,7 @@ async function fetchFeedback(){
 function calculateAllDayRating(data){
   let sum=0, count=0;
   data.forEach(d=>{
-    if(d.Average_Rating>0){ sum += d.Average_RATING || d.Average_Rating; count++; }
+    if(d.Average_RATING>0){ sum += d.Average_RATING; count++; }
   });
   return count ? (sum/count).toFixed(2) : 0;
 }
@@ -97,12 +94,12 @@ function prepareCharts(data){
   if(ratingChart) ratingChart.destroy();
   if(recommendChart) recommendChart.destroy();
 
+  // Bar chart: Overall Ratings
   const ratingCounts = [0,0,0,0,0];
   data.forEach(d=>{
-    const r = Math.round(d.Overall_Rating);
+    const r = Math.round(d.Overall_RATING);
     if(r>=1&&r<=5) ratingCounts[r-1]++;
   });
-
   const ratingCtx = document.getElementById('ratingChart').getContext('2d');
   ratingChart = new Chart(ratingCtx,{
     type:'bar',
@@ -110,8 +107,8 @@ function prepareCharts(data){
     options:{responsive:true, plugins:{legend:{display:false}}}
   });
 
-  // Pie chart
-  let yes=0,no=0;
+  // Pie chart: Recommend
+  let yes=0, no=0;
   data.forEach(d=>{ if(d.Recommend==='Yes') yes++; else no++; });
   const recommendCtx = document.getElementById('recommendChart').getContext('2d');
   recommendChart = new Chart(recommendCtx,{
@@ -134,12 +131,12 @@ function populateTable(data){
 
     tr.innerHTML = `
       <td>${d.Timestamp}</td>
-      <td>${d.Overall_Rating}</td>
+      <td>${d.Overall_RATING}</td>
       <td>${d.Taste_RATING}</td>
       <td>${d.Service_RATING}</td>
       <td>${d.Cleanliness_RATING}</td>
       <td>${d.Recommend}</td>
-      <td>${d.Average_Rating.toFixed(2)}</td>
+      <td>${d.Average_RATING.toFixed(2)}</td>
       <td class="comments">${d.Comments}</td>
     `;
     tbody.appendChild(tr);
@@ -149,7 +146,7 @@ function populateTable(data){
   previousTimestamps = newTimestamps;
 }
 
-// Update dashboard only if new submission
+// Update dashboard only if new submission exists
 async function updateDashboardIfNew(){
   const data = await fetchFeedback();
   const newDataExists = data.some(d=>!previousTimestamps.has(d.Timestamp));
