@@ -11,10 +11,17 @@ body {font-family:Arial;background:#fff5f5;text-align:center;padding:20px;}
 h1 {color:#d71920;}
 h2 {color:#0057a4;}
 canvas {margin-top:30px;}
+#recommendChart {max-width:300px;margin:20px auto;}
 table {width:100%;border-collapse:collapse;margin-top:30px;}
 th, td {border:1px solid #ccc;padding:8px;text-align:center;}
 th {background:#d71920;color:white;}
 tr:nth-child(even){background:#f9f9f9;}
+td.comments {text-align:left; max-width:300px; word-wrap:break-word;}
+.highlight {animation: highlightAnim 2s ease;}
+@keyframes highlightAnim {
+  0% {background-color: #ffff99;}
+  100% {background-color: transparent;}
+}
 </style>
 </head>
 <body>
@@ -37,6 +44,7 @@ tr:nth-child(even){background:#f9f9f9;}
 <th>Cleanliness</th>
 <th>Recommend</th>
 <th>Average</th>
+<th>Comments</th>
 </tr>
 </thead>
 <tbody></tbody>
@@ -45,10 +53,14 @@ tr:nth-child(even){background:#f9f9f9;}
 
 <script>
 const SHEET_JSON_URL = "https://script.google.com/macros/s/AKfycbzm2E_uPG7ixZB9dDPjexBfGCOdnmeabiqC9zdQMxSmaxNu6g1U1fQxrsx8tLDYsUmscg/exec"; // Replace with your Apps Script URL
+let ratingChart = null;
+let recommendChart = null;
+let previousTimestamps = new Set();
 
 async function fetchFeedback(){
   const res = await fetch(SHEET_JSON_URL);
-  return await res.json();
+  const data = await res.json();
+  return data.slice(4); // Skip first 4 rows
 }
 
 function calculateAllDayRating(data){
@@ -58,33 +70,43 @@ function calculateAllDayRating(data){
 }
 
 function prepareCharts(data){
+  if(ratingChart) ratingChart.destroy();
+  if(recommendChart) recommendChart.destroy();
+
   // Bar chart: Overall Ratings
   const ratingCounts=[0,0,0,0,0];
   data.forEach(d=>{
     const r=Math.round(Number(d.Overall_Rating));
     if(r>=1 && r<=5) ratingCounts[r-1]++;
   });
-  new Chart(document.getElementById('ratingChart').getContext('2d'),{
+  const ratingCtx = document.getElementById('ratingChart').getContext('2d');
+  ratingChart = new Chart(ratingCtx,{
     type:'bar',
     data:{labels:['1 Star','2 Stars','3 Stars','4 Stars','5 Stars'],datasets:[{label:'Ratings',data:ratingCounts,backgroundColor:'#d71920'}]},
     options:{responsive:true,plugins:{legend:{display:false}}}
   });
 
-  // Pie chart: Recommend
+  // Pie chart: Recommend (smaller)
   let yes=0,no=0;
   data.forEach(d=>d.Recommend==='Yes'?yes++:no++);
-  new Chart(document.getElementById('recommendChart').getContext('2d'),{
+  const recommendCtx = document.getElementById('recommendChart').getContext('2d');
+  recommendChart = new Chart(recommendCtx,{
     type:'pie',
     data:{labels:['Recommend','Not Recommend'],datasets:[{data:[yes,no],backgroundColor:['#d71920','#0057a4']}]},
-    options:{responsive:true}
+    options:{responsive:true,plugins:{legend:{position:'bottom'}}}
   });
 }
 
 function populateTable(data){
   const tbody = document.querySelector('#feedbackTable tbody');
-  tbody.innerHTML=''; // Clear existing
+  tbody.innerHTML='';
   data.forEach(d=>{
     const tr=document.createElement('tr');
+
+    // Highlight new rows
+    const isNew = !previousTimestamps.has(d.Timestamp);
+    if(isNew) tr.classList.add('highlight');
+
     tr.innerHTML=`
       <td>${d.Timestamp}</td>
       <td>${d.Overall_Rating}</td>
@@ -93,12 +115,17 @@ function populateTable(data){
       <td>${d.Cleanliness_Rating}</td>
       <td>${d.Recommend}</td>
       <td>${Number(d.Average_Rating).toFixed(2)}</td>
+      <td class="comments">${d.Comments || ''}</td>
     `;
     tbody.appendChild(tr);
   });
+
+  // Update previous timestamps
+  previousTimestamps.clear();
+  data.forEach(d=>previousTimestamps.add(d.Timestamp));
 }
 
-async function initDashboard(){
+async function updateDashboard(){
   const data = await fetchFeedback();
   document.getElementById('totalFeedback').textContent = data.length;
   document.getElementById('allDayRating').textContent = "⭐ "+calculateAllDayRating(data)+" / 5";
@@ -106,7 +133,11 @@ async function initDashboard(){
   populateTable(data);
 }
 
-initDashboard();
+// Initial load
+updateDashboard();
+
+// Auto-refresh every 10 seconds
+setInterval(updateDashboard, 10000);
 </script>
 </body>
 </html>
