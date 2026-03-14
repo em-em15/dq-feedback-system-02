@@ -18,7 +18,7 @@ button{margin-top:20px;background:#d71920;color:white;padding:12px 20px;border:n
 
 <div class="container">
 <h1>Dairy Queen Feedback</h1>
-<p>Enjoy your <b>FREE Ice Cream Cone 🍦</b> before submitting feedback!</p>
+<p>Enjoy your <b>FREE Ice Cream Cone 🍦</b> after submitting feedback!</p>
 
 <form id="feedbackForm">
 <label>Overall Experience</label>
@@ -34,31 +34,31 @@ button{margin-top:20px;background:#d71920;color:white;padding:12px 20px;border:n
 <label>Ice Cream Taste</label>
 <select name="taste" required>
 <option value="">Select Rating</option>
-<option value="1">1</option>
-<option value="2">2</option>
-<option value="3">3</option>
-<option value="4">4</option>
-<option value="5">5</option>
+<option value="1">1 - Very Poor</option>
+<option value="2">2 - Poor</option>
+<option value="3">3 - Good</option>
+<option value="4">4 - Very Good</option>
+<option value="5">5 - Excellent</option>
 </select>
 
 <label>Service Quality</label>
 <select name="service" required>
 <option value="">Select Rating</option>
-<option value="1">1</option>
-<option value="2">2</option>
-<option value="3">3</option>
-<option value="4">4</option>
-<option value="5">5</option>
+<option value="1">1 - Very Poor</option>
+<option value="2">2 - Poor</option>
+<option value="3">3 - Good</option>
+<option value="4">4 - Very Good</option>
+<option value="5">5 - Excellent</option>
 </select>
 
 <label>Store Cleanliness</label>
 <select name="cleanliness" required>
 <option value="">Select Rating</option>
-<option value="1">1</option>
-<option value="2">2</option>
-<option value="3">3</option>
-<option value="4">4</option>
-<option value="5">5</option>
+<option value="1">1 - Very Poor</option>
+<option value="2">2 - Poor</option>
+<option value="3">3 - Good</option>
+<option value="4">4 - Very Good</option>
+<option value="5">5 - Excellent</option>
 </select>
 
 <label>Would you recommend Dairy Queen?</label>
@@ -84,7 +84,7 @@ document.getElementById("feedbackForm").addEventListener("submit", async functio
   const data = {};
   formData.forEach((value,key)=>data[key]=value);
 
-  await fetch("https://script.google.com/macros/s/AKfycbx9bsS3GMHx9cEWmEMhE_01V4kDXVd4VP1gAmzbdE8m8zBcd6BoGxXUZ8p_HZsItSaoSA/exec", {
+  await fetch("https://script.google.com/macros/s/AKfycbyXfuF4xiExIUzo9J-5Yb-gCm9lp_gQAiuk76iFpnBX-Q1JlIbTA1szSK-sgHfjulnYCA/exec", {
     method:"POST",
     mode:"no-cors",
     headers: { "Content-Type": "application/json" },
