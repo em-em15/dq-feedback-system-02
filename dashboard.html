@@ -52,49 +52,44 @@ td.comments {text-align:left; max-width:300px; word-wrap:break-word;}
 </div>
 
 <script>
-const SHEET_JSON_URL = "https://script.google.com/macros/s/AKfycbw9gafZnaWWHhvFfZrXe-2v1VNQKxwnCwNc0Z6h6N2DsrK1IFL5tD1aspnUMPzT7T7g3g/exec"; // Replace with your Apps Script URL
+const SHEET_JSON_URL = "https://script.google.com/macros/s/AKfycbw9gafZnaWWHhvFfZrXe-2v1VNQKxwnCwNc0Z6h6N2DsrK1IFL5tD1aspnUMPzT7T7g3g/exec"; // replace with your Apps Script URL
 let ratingChart = null;
 let recommendChart = null;
 let previousTimestamps = new Set();
-
-// Fetch data from Google Sheet
-async function fetchFeedback(){
-  try {
-    const res = await fetch(SHEET_JSON_URL);
-    const data = await res.json();
-    return data.slice(4); // skip first 4 rows
-  } catch(err){
-    console.error("Failed to fetch feedback:", err);
-    return [];
-  }
-}
 
 // Safe parsing
 function safeNumber(val){ const n = Number(val); return isNaN(n)?0:n; }
 function safeValue(val){ return val===undefined||val===null?'':val; }
 
-// Map JSON to exact column names
-function mapFeedback(d){
-  return {
-    Timestamp: safeValue(d.Timestamp),
-    Overall_Rating: safeNumber(d.Overall_Rating),
-    Taste_Rating: safeNumber(d.Taste_Rating),
-    Service_Rating: safeNumber(d.Service_Rating),
-    Cleanliness_Rating: safeNumber(d.Cleanliness_Rating),
-    Recommend: safeValue(d.Recommend),
-    Comments: safeValue(d.Comments),
-    Average_Rating: safeNumber(d.Average_Rating)
-  };
+// Fetch and map data
+async function fetchFeedback(){
+  try{
+    const res = await fetch(SHEET_JSON_URL);
+    const raw = await res.json();
+    // Map to fixed columns
+    return raw.map(d=>({
+      Timestamp: safeValue(d.Timestamp),
+      Overall_Rating: safeNumber(d.Overall_Rating),
+      Taste_Rating: safeNumber(d.Taste_Rating),
+      Service_RATING: safeNumber(d.Service_RATING),
+      Cleanliness_RATING: safeNumber(d.Cleanliness_RATING),
+      Recommend: safeValue(d.Recommend),
+      Comments: safeValue(d.Comments),
+      Average_Rating: safeNumber(d.Average_Rating)
+    }));
+  }catch(err){
+    console.error(err);
+    return [];
+  }
 }
 
 // Calculate all-day average
 function calculateAllDayRating(data){
-  let sum = 0;
-  let count = 0;
+  let sum=0, count=0;
   data.forEach(d=>{
-    if(d.Average_Rating>0){ sum += d.Average_Rating; count++; }
+    if(d.Average_Rating>0){ sum += d.Average_RATING || d.Average_Rating; count++; }
   });
-  return count? (sum/count).toFixed(2) : 0;
+  return count ? (sum/count).toFixed(2) : 0;
 }
 
 // Prepare charts
@@ -102,12 +97,12 @@ function prepareCharts(data){
   if(ratingChart) ratingChart.destroy();
   if(recommendChart) recommendChart.destroy();
 
-  // Bar chart: Overall Ratings
   const ratingCounts = [0,0,0,0,0];
   data.forEach(d=>{
     const r = Math.round(d.Overall_Rating);
-    if(r>=1 && r<=5) ratingCounts[r-1]++;
+    if(r>=1&&r<=5) ratingCounts[r-1]++;
   });
+
   const ratingCtx = document.getElementById('ratingChart').getContext('2d');
   ratingChart = new Chart(ratingCtx,{
     type:'bar',
@@ -115,7 +110,7 @@ function prepareCharts(data){
     options:{responsive:true, plugins:{legend:{display:false}}}
   });
 
-  // Pie chart: Recommend
+  // Pie chart
   let yes=0,no=0;
   data.forEach(d=>{ if(d.Recommend==='Yes') yes++; else no++; });
   const recommendCtx = document.getElementById('recommendChart').getContext('2d');
@@ -140,9 +135,9 @@ function populateTable(data){
     tr.innerHTML = `
       <td>${d.Timestamp}</td>
       <td>${d.Overall_Rating}</td>
-      <td>${d.Taste_Rating}</td>
-      <td>${d.Service_Rating}</td>
-      <td>${d.Cleanliness_Rating}</td>
+      <td>${d.Taste_RATING}</td>
+      <td>${d.Service_RATING}</td>
+      <td>${d.Cleanliness_RATING}</td>
       <td>${d.Recommend}</td>
       <td>${d.Average_Rating.toFixed(2)}</td>
       <td class="comments">${d.Comments}</td>
@@ -154,10 +149,9 @@ function populateTable(data){
   previousTimestamps = newTimestamps;
 }
 
-// Update dashboard only if new submission exists
+// Update dashboard only if new submission
 async function updateDashboardIfNew(){
-  const rawData = await fetchFeedback();
-  const data = rawData.map(mapFeedback);
+  const data = await fetchFeedback();
   const newDataExists = data.some(d=>!previousTimestamps.has(d.Timestamp));
   if(newDataExists){
     document.getElementById('totalFeedback').textContent = data.length;
@@ -170,7 +164,7 @@ async function updateDashboardIfNew(){
 // Initial load
 updateDashboardIfNew();
 
-// Poll Google Sheet every 10 seconds to detect new submissions
+// Poll every 10s for new submissions
 setInterval(updateDashboardIfNew, 10000);
 </script>
 </body>
