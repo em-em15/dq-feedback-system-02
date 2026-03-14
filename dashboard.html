@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dairy Queen Admin Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+body{font-family:Arial;background:#fff5f5;text-align:center;padding:20px;}
+.container{max-width:1000px;margin:auto;background:white;padding:30px;border-radius:10px;box-shadow:0 0 15px rgba(0,0,0,0.1);}
+h1{color:#d71920;}
+h2{color:#0057a4;}
+canvas{margin-top:30px;}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>Dairy Queen Customer Feedback Dashboard</h1>
+<h2>All-Day Rating: <span id="allDayRating">⭐ 0 / 5</span></h2>
+<h2>Total Feedback Submitted: <span id="totalFeedback">0</span></h2>
+<canvas id="ratingChart"></canvas>
+<canvas id="recommendChart"></canvas>
+</div>
+
+<script>
+const SHEET_JSON_URL = "https://script.google.com/macros/s/AKfycbzm2E_uPG7ixZB9dDPjexBfGCOdnmeabiqC9zdQMxSmaxNu6g1U1fQxrsx8tLDYsUmscg/exec";
+
+async function fetchFeedback(){
+  const res = await fetch(SHEET_JSON_URL);
+  return await res.json();
+}
+
+function calculateAllDayRating(data){
+  let sum=0;
+  data.forEach(d=>sum+=Number(d.Average_Rating));
+  return data.length?(sum/data.length).toFixed(2):0;
+}
+
+function prepareCharts(data){
+  const ratingCounts=[0,0,0,0,0];
+  data.forEach(d=>{
+    const r=Math.round(Number(d.Overall_Rating));
+    if(r>=1 && r<=5) ratingCounts[r-1]++;
+  });
+  new Chart(document.getElementById('ratingChart').getContext('2d'),{
+    type:'bar',
+    data:{labels:['1 Star','2 Stars','3 Stars','4 Stars','5 Stars'],datasets:[{label:'Ratings',data:ratingCounts,backgroundColor:'#d71920'}]},
+    options:{responsive:true,plugins:{legend:{display:false}}}
+  });
+
+  let yes=0,no=0;
+  data.forEach(d=>d.Recommend==='Yes'?yes++:no++);
+  new Chart(document.getElementById('recommendChart').getContext('2d'),{
+    type:'pie',
+    data:{labels:['Recommend','Not Recommend'],datasets:[{data:[yes,no],backgroundColor:['#d71920','#0057a4']}]},
+    options:{responsive:true}
+  });
+}
+
+async function initDashboard(){
+  const data = await fetchFeedback();
+  document.getElementById('totalFeedback').textContent = data.length;
+  document.getElementById('allDayRating').textContent = "⭐ "+calculateAllDayRating(data)+" / 5";
+  prepareCharts(data);
+}
+
+initDashboard();
+</script>
+</body>
+</html>
