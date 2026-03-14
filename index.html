@@ -5,94 +5,72 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dairy Queen Feedback</title>
 <style>
-body {font-family:Arial;background:#fff5f5;padding:20px;text-align:center;}
-.container {max-width:600px;margin:auto;background:white;padding:30px;border-radius:10px;box-shadow:0 0 15px rgba(0,0,0,0.1);}
-h1{color:#d71920;}
-label{display:block;margin-top:15px;font-weight:bold;color:#d71920;}
-select, textarea {width:100%;padding:8px;margin-top:5px;border-radius:5px;border:1px solid #ccc;}
-button{margin-top:20px;background:#d71920;color:white;padding:12px 20px;border:none;border-radius:5px;cursor:pointer;}
-#thankyou{display:none;font-size:20px;color:green;margin-top:20px;}
+body {font-family: Arial; background:#fff5f5; text-align:center; padding:20px;}
+.container {max-width:600px; margin:auto; background:white; padding:30px; border-radius:10px; box-shadow:0 0 10px rgba(0,0,0,0.1);}
+h1 {color:#d71920;}
+label {display:block; margin-top:15px; font-weight:bold; text-align:left;}
+input[type="number"], select, textarea {width:100%; padding:10px; margin-top:5px; border-radius:5px; border:1px solid #ccc;}
+button {margin-top:20px; padding:15px 30px; background:#d71920; color:white; font-size:16px; border:none; border-radius:5px; cursor:pointer;}
+button:hover {background:#b3121b;}
+#thankYou {display:none; margin-top:20px; font-size:18px; color:#0057a4;}
 </style>
 </head>
 <body>
-
 <div class="container">
-<h1>Dairy Queen Feedback</h1>
-<p>Enjoy your <b>FREE Ice Cream Cone 🍦</b> after submitting feedback!</p>
+<h1>Dairy Queen Feedback Form</h1>
+<p>Fill out the form and get a <strong>FREE Ice Cream in a Cone!</strong></p>
 
 <form id="feedbackForm">
-<label>Overall Experience</label>
-<select name="overall" required>
-<option value="">Select Rating</option>
-<option value="1">1 - Very Poor</option>
-<option value="2">2 - Poor</option>
-<option value="3">3 - Good</option>
-<option value="4">4 - Very Good</option>
-<option value="5">5 - Excellent</option>
-</select>
+  <label>Overall Rating (1-5)</label>
+  <input type="number" name="Overall_RATING" min="1" max="5" required>
 
-<label>Ice Cream Taste</label>
-<select name="taste" required>
-<option value="">Select Rating</option>
-<option value="1">1 - Very Poor</option>
-<option value="2">2 - Poor</option>
-<option value="3">3 - Good</option>
-<option value="4">4 - Very Good</option>
-<option value="5">5 - Excellent</option>
-</select>
+  <label>Taste Rating (1-5)</label>
+  <input type="number" name="Taste_RATING" min="1" max="5" required>
 
-<label>Service Quality</label>
-<select name="service" required>
-<option value="">Select Rating</option>
-<option value="1">1 - Very Poor</option>
-<option value="2">2 - Poor</option>
-<option value="3">3 - Good</option>
-<option value="4">4 - Very Good</option>
-<option value="5">5 - Excellent</option>
-</select>
+  <label>Service Rating (1-5)</label>
+  <input type="number" name="Service_RATING" min="1" max="5" required>
 
-<label>Store Cleanliness</label>
-<select name="cleanliness" required>
-<option value="">Select Rating</option>
-<option value="1">1 - Very Poor</option>
-<option value="2">2 - Poor</option>
-<option value="3">3 - Good</option>
-<option value="4">4 - Very Good</option>
-<option value="5">5 - Excellent</option>
-</select>
+  <label>Cleanliness Rating (1-5)</label>
+  <input type="number" name="Cleanliness_RATING" min="1" max="5" required>
 
-<label>Would you recommend Dairy Queen?</label>
-<select name="recommend" required>
-<option value="">Select</option>
-<option value="Yes">Yes</option>
-<option value="No">No</option>
-</select>
+  <label>Would you recommend us?</label>
+  <select name="Recommend" required>
+    <option value="">Select</option>
+    <option value="Yes">Yes</option>
+    <option value="No">No</option>
+  </select>
 
-<label>Comments or Suggestions</label>
-<textarea name="comments" rows="4" placeholder="Your feedback..."></textarea>
+  <label>Comments</label>
+  <textarea name="Comments" rows="4" placeholder="Your comments here..."></textarea>
 
-<button type="submit">Submit Feedback</button>
+  <button type="submit">Submit Feedback</button>
 </form>
 
-<div id="thankyou">🎉 Thank you for your feedback! We hope you enjoyed your FREE Ice Cream Cone 🍦</div>
+<div id="thankYou">
+🎉 Thank you for your feedback! Enjoy your FREE Ice Cream in a Cone! 🍦
+</div>
 </div>
 
 <script>
-document.getElementById("feedbackForm").addEventListener("submit", async function(event){
-  event.preventDefault();
-  const formData = new FormData(this);
-  const data = {};
-  formData.forEach((value,key)=>data[key]=value);
+const FORM_ACTION_URL = "https://script.google.com/macros/s/AKfycbzXgPWkLRM0mySXw2L90N5LwpeeP12jzoZehRd935aqEPRqUEWuM1m2CQOBbvy7DargKw/exec"; // Your Apps Script URL
 
-  await fetch("https://script.google.com/macros/s/AKfycbzVWzodGigaFKAXMseoUYcwzEBk6tQWFCk1Buh-k_dpBZGVshbD1i8xhxdiWlnZ-eITig/exec", {
-    method:"POST",
-    mode:"no-cors",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data)
-  });
+document.getElementById("feedbackForm").addEventListener("submit", async function(e){
+  e.preventDefault();
+  const data = new FormData(this);
 
-  document.getElementById("feedbackForm").style.display="none";
-  document.getElementById("thankyou").style.display="block";
+  try {
+    const res = await fetch(FORM_ACTION_URL, {method:"POST", body:data});
+    const result = await res.json();
+    if(result.status==="success"){
+      document.getElementById("feedbackForm").style.display="none";
+      document.getElementById("thankYou").style.display="block";
+    } else {
+      alert("Error submitting feedback: "+result.message);
+    }
+  } catch(err){
+    console.error(err);
+    alert("Error sending feedback. Try again later.");
+  }
 });
 </script>
 </body>
