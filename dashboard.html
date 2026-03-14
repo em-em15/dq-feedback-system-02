@@ -10,8 +10,8 @@ body {font-family: Arial; background:#fff5f5; text-align:center; padding:20px;}
 .container {max-width:1200px; margin:auto; background:white; padding:30px; border-radius:10px; box-shadow:0 0 15px rgba(0,0,0,0.1);}
 h1 {color:#d71920;}
 h2 {color:#0057a4;}
-canvas {margin-top:30px;}
-#recommendChart {max-width:300px; margin:20px auto;}
+canvas {margin-top:20px;}
+#recommendChart, #miniCharts {margin:20px auto;}
 table {width:100%; border-collapse:collapse; margin-top:30px;}
 th, td {border:1px solid #ccc; padding:8px; text-align:center;}
 th {background:#d71920; color:white;}
@@ -19,6 +19,7 @@ tr:nth-child(even){background:#f9f9f9;}
 td.comments {text-align:left; max-width:300px; word-wrap:break-word;}
 .highlight {animation: highlightAnim 2s ease;}
 @keyframes highlightAnim {0% {background-color: #ffff99;} 100% {background-color: transparent;}}
+.mini-chart {width:200px; height:150px; margin:20px; display:inline-block;}
 </style>
 </head>
 <body>
@@ -29,6 +30,13 @@ td.comments {text-align:left; max-width:300px; word-wrap:break-word;}
 
 <canvas id="ratingChart"></canvas>
 <canvas id="recommendChart"></canvas>
+
+<h2>Mini Metrics Charts</h2>
+<div id="miniCharts">
+  <canvas id="tasteChart" class="mini-chart"></canvas>
+  <canvas id="serviceChart" class="mini-chart"></canvas>
+  <canvas id="cleanChart" class="mini-chart"></canvas>
+</div>
 
 <h2>All Feedback Ratings</h2>
 <table id="feedbackTable">
@@ -49,30 +57,35 @@ td.comments {text-align:left; max-width:300px; word-wrap:break-word;}
 </div>
 
 <script>
-const SHEET_JSON_URL = "https://script.google.com/macros/s/AKfycbx_RmCNaG8ib2A_RA-cL3yn5UT4UIYMtOtF2wbqA2q736s3AeIcaRjG6S4Iy9fPwyaBKg/exec"; // Replace with your Apps Script Web App URL
+const SHEET_JSON_URL = "https://script.google.com/macros/s/AKfycbwJ3FTjKKT4Nvfv1uWKMEnG5JfOXZA7R2wnWvF_5qBe_N7EyBk-ZZx9M8Ai81nYdeo5/exec"; // Replace with Apps Script URL
 let ratingChart = null;
 let recommendChart = null;
+let tasteChart = null;
+let serviceChart = null;
+let cleanChart = null;
 let previousTimestamps = new Set();
 
 // Safe parsing
 function safeNumber(val){ const n = Number(val); return isNaN(n)?0:n; }
 function safeValue(val){ return val===undefined||val===null?'':val; }
 
+// Parse timestamp to sortable Date
+function parseTimestamp(ts){ return new Date(ts); }
+
 // Fetch and map data
 async function fetchFeedback(){
   try{
     const res = await fetch(SHEET_JSON_URL);
     const raw = await res.json();
-    // Map to fixed columns
     return raw.map(d=>({
       Timestamp: safeValue(d.Timestamp),
-      Overall_RATING: safeNumber(d.Overall_RATING),
-      Taste_RATING: safeNumber(d.Taste_RATING),
-      Service_RATING: safeNumber(d.Service_RATING),
-      Cleanliness_RATING: safeNumber(d.Cleanliness_RATING),
+      Overall_RATING: safeNumber(d.Overall_Rating || d.Overall_RATING),
+      Taste_RATING: safeNumber(d.Taste_Rating || d.Taste_RATING),
+      Service_RATING: safeNumber(d.Service_Rating || d.Service_RATING),
+      Cleanliness_RATING: safeNumber(d.Cleanliness_Rating || d.Cleanliness_RATING),
       Recommend: safeValue(d.Recommend),
       Comments: safeValue(d.Comments),
-      Average_RATING: safeNumber(d.Average_RATING)
+      Average_RATING: safeNumber(d.Average_Rating || d.Average_RATING)
     }));
   }catch(err){
     console.error(err);
@@ -89,12 +102,15 @@ function calculateAllDayRating(data){
   return count ? (sum/count).toFixed(2) : 0;
 }
 
-// Prepare charts
+// Prepare main charts
 function prepareCharts(data){
   if(ratingChart) ratingChart.destroy();
   if(recommendChart) recommendChart.destroy();
+  if(tasteChart) tasteChart.destroy();
+  if(serviceChart) serviceChart.destroy();
+  if(cleanChart) cleanChart.destroy();
 
-  // Bar chart: Overall Ratings
+  // Overall Rating Bar
   const ratingCounts = [0,0,0,0,0];
   data.forEach(d=>{
     const r = Math.round(d.Overall_RATING);
@@ -107,8 +123,8 @@ function prepareCharts(data){
     options:{responsive:true, plugins:{legend:{display:false}}}
   });
 
-  // Pie chart: Recommend
-  let yes=0, no=0;
+  // Recommend Pie
+  let yes=0,no=0;
   data.forEach(d=>{ if(d.Recommend==='Yes') yes++; else no++; });
   const recommendCtx = document.getElementById('recommendChart').getContext('2d');
   recommendChart = new Chart(recommendCtx,{
@@ -116,13 +132,33 @@ function prepareCharts(data){
     data:{labels:['Recommend','Not Recommend'], datasets:[{data:[yes,no], backgroundColor:['#d71920','#0057a4']}]},
     options:{responsive:true, plugins:{legend:{position:'bottom'}}}
   });
+
+  // Mini-bar charts
+  const tasteValues = data.map(d=>d.Taste_RATING);
+  const serviceValues = data.map(d=>d.Service_RATING);
+  const cleanValues = data.map(d=>d.Cleanliness_RATING);
+  const labels = data.map(d=>d.Timestamp);
+
+  const miniOptions = {responsive:true, plugins:{legend:{display:false}}, scales:{y:{min:0, max:5}}};
+
+  tasteChart = new Chart(document.getElementById('tasteChart').getContext('2d'),{
+    type:'bar', data:{labels, datasets:[{label:'Taste', data:tasteValues, backgroundColor:'#f4a261'}]}, options:miniOptions
+  });
+  serviceChart = new Chart(document.getElementById('serviceChart').getContext('2d'),{
+    type:'bar', data:{labels, datasets:[{label:'Service', data:serviceValues, backgroundColor:'#2a9d8f'}]}, options:miniOptions
+  });
+  cleanChart = new Chart(document.getElementById('cleanChart').getContext('2d'),{
+    type:'bar', data:{labels, datasets:[{label:'Cleanliness', data:cleanValues, backgroundColor:'#e9c46a'}]}, options:miniOptions
+  });
 }
 
-// Populate table
+// Populate table (sorted by newest first)
 function populateTable(data){
   const tbody = document.querySelector('#feedbackTable tbody');
   tbody.innerHTML='';
   const newTimestamps = new Set();
+
+  data.sort((a,b)=>parseTimestamp(b.Timestamp)-parseTimestamp(a.Timestamp));
 
   data.forEach(d=>{
     const tr = document.createElement('tr');
@@ -146,7 +182,7 @@ function populateTable(data){
   previousTimestamps = newTimestamps;
 }
 
-// Update dashboard only if new submission exists
+// Update dashboard only if new submission
 async function updateDashboardIfNew(){
   const data = await fetchFeedback();
   const newDataExists = data.some(d=>!previousTimestamps.has(d.Timestamp));
