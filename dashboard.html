@@ -57,40 +57,31 @@ td.comments {text-align:left; max-width:300px; word-wrap:break-word;}
 </div>
 
 <script>
-const SHEET_JSON_URL = "https://script.google.com/macros/s/AKfycbwJ3FTjKKT4Nvfv1uWKMEnG5JfOXZA7R2wnWvF_5qBe_N7EyBk-ZZx9M8Ai81nYdeo5/exec"; // Replace with Apps Script URL
-let ratingChart = null;
-let recommendChart = null;
-let tasteChart = null;
-let serviceChart = null;
-let cleanChart = null;
+const SHEET_JSON_URL = "https://script.google.com/macros/s/AKfycbzXgPWkLRM0mySXw2L90N5LwpeeP12jzoZehRd935aqEPRqUEWuM1m2CQOBbvy7DargKw/exec"; // Replace with your Apps Script Web App URL
+let ratingChart = null, recommendChart = null, tasteChart = null, serviceChart = null, cleanChart = null;
 let previousTimestamps = new Set();
 
 // Safe parsing
 function safeNumber(val){ const n = Number(val); return isNaN(n)?0:n; }
 function safeValue(val){ return val===undefined||val===null?'':val; }
-
-// Parse timestamp to sortable Date
 function parseTimestamp(ts){ return new Date(ts); }
 
-// Fetch and map data
+// Fetch data
 async function fetchFeedback(){
   try{
     const res = await fetch(SHEET_JSON_URL);
     const raw = await res.json();
     return raw.map(d=>({
       Timestamp: safeValue(d.Timestamp),
-      Overall_RATING: safeNumber(d.Overall_Rating || d.Overall_RATING),
-      Taste_RATING: safeNumber(d.Taste_Rating || d.Taste_RATING),
-      Service_RATING: safeNumber(d.Service_Rating || d.Service_RATING),
-      Cleanliness_RATING: safeNumber(d.Cleanliness_Rating || d.Cleanliness_RATING),
+      Overall_RATING: safeNumber(d.Overall_RATING),
+      Taste_RATING: safeNumber(d.Taste_RATING),
+      Service_RATING: safeNumber(d.Service_RATING),
+      Cleanliness_RATING: safeNumber(d.Cleanliness_RATING),
       Recommend: safeValue(d.Recommend),
       Comments: safeValue(d.Comments),
-      Average_RATING: safeNumber(d.Average_Rating || d.Average_RATING)
+      Average_RATING: safeNumber(d.Average_RATING)
     }));
-  }catch(err){
-    console.error(err);
-    return [];
-  }
+  }catch(err){ console.error(err); return []; }
 }
 
 // Calculate all-day average
@@ -102,7 +93,7 @@ function calculateAllDayRating(data){
   return count ? (sum/count).toFixed(2) : 0;
 }
 
-// Prepare main charts
+// Create charts
 function prepareCharts(data){
   if(ratingChart) ratingChart.destroy();
   if(recommendChart) recommendChart.destroy();
@@ -110,14 +101,13 @@ function prepareCharts(data){
   if(serviceChart) serviceChart.destroy();
   if(cleanChart) cleanChart.destroy();
 
-  // Overall Rating Bar
+  // Overall Ratings Bar
   const ratingCounts = [0,0,0,0,0];
   data.forEach(d=>{
     const r = Math.round(d.Overall_RATING);
     if(r>=1&&r<=5) ratingCounts[r-1]++;
   });
-  const ratingCtx = document.getElementById('ratingChart').getContext('2d');
-  ratingChart = new Chart(ratingCtx,{
+  ratingChart = new Chart(document.getElementById('ratingChart').getContext('2d'),{
     type:'bar',
     data:{labels:['1 Star','2 Stars','3 Stars','4 Stars','5 Stars'], datasets:[{label:'Ratings', data:ratingCounts, backgroundColor:'#d71920'}]},
     options:{responsive:true, plugins:{legend:{display:false}}}
@@ -126,33 +116,26 @@ function prepareCharts(data){
   // Recommend Pie
   let yes=0,no=0;
   data.forEach(d=>{ if(d.Recommend==='Yes') yes++; else no++; });
-  const recommendCtx = document.getElementById('recommendChart').getContext('2d');
-  recommendChart = new Chart(recommendCtx,{
+  recommendChart = new Chart(document.getElementById('recommendChart').getContext('2d'),{
     type:'pie',
     data:{labels:['Recommend','Not Recommend'], datasets:[{data:[yes,no], backgroundColor:['#d71920','#0057a4']}]},
     options:{responsive:true, plugins:{legend:{position:'bottom'}}}
   });
 
-  // Mini-bar charts
-  const tasteValues = data.map(d=>d.Taste_RATING);
-  const serviceValues = data.map(d=>d.Service_RATING);
-  const cleanValues = data.map(d=>d.Cleanliness_RATING);
+  // Mini charts
   const labels = data.map(d=>d.Timestamp);
-
-  const miniOptions = {responsive:true, plugins:{legend:{display:false}}, scales:{y:{min:0, max:5}}};
-
   tasteChart = new Chart(document.getElementById('tasteChart').getContext('2d'),{
-    type:'bar', data:{labels, datasets:[{label:'Taste', data:tasteValues, backgroundColor:'#f4a261'}]}, options:miniOptions
+    type:'bar', data:{labels, datasets:[{label:'Taste', data:data.map(d=>d.Taste_RATING), backgroundColor:'#f4a261'}]}, options:{responsive:true, plugins:{legend:{display:false}}, scales:{y:{min:0,max:5}}}
   });
   serviceChart = new Chart(document.getElementById('serviceChart').getContext('2d'),{
-    type:'bar', data:{labels, datasets:[{label:'Service', data:serviceValues, backgroundColor:'#2a9d8f'}]}, options:miniOptions
+    type:'bar', data:{labels, datasets:[{label:'Service', data:data.map(d=>d.Service_RATING), backgroundColor:'#2a9d8f'}]}, options:{responsive:true, plugins:{legend:{display:false}}, scales:{y:{min:0,max:5}}}
   });
   cleanChart = new Chart(document.getElementById('cleanChart').getContext('2d'),{
-    type:'bar', data:{labels, datasets:[{label:'Cleanliness', data:cleanValues, backgroundColor:'#e9c46a'}]}, options:miniOptions
+    type:'bar', data:{labels, datasets:[{label:'Cleanliness', data:data.map(d=>d.Cleanliness_RATING), backgroundColor:'#e9c46a'}]}, options:{responsive:true, plugins:{legend:{display:false}}, scales:{y:{min:0,max:5}}}
   });
 }
 
-// Populate table (sorted by newest first)
+// Populate table (newest first)
 function populateTable(data){
   const tbody = document.querySelector('#feedbackTable tbody');
   tbody.innerHTML='';
@@ -162,9 +145,7 @@ function populateTable(data){
 
   data.forEach(d=>{
     const tr = document.createElement('tr');
-    const isNew = !previousTimestamps.has(d.Timestamp);
-    if(isNew) tr.classList.add('highlight');
-
+    if(!previousTimestamps.has(d.Timestamp)) tr.classList.add('highlight');
     tr.innerHTML = `
       <td>${d.Timestamp}</td>
       <td>${d.Overall_RATING}</td>
@@ -178,15 +159,14 @@ function populateTable(data){
     tbody.appendChild(tr);
     newTimestamps.add(d.Timestamp);
   });
-
   previousTimestamps = newTimestamps;
 }
 
-// Update dashboard only if new submission
+// Update dashboard if new submission exists
 async function updateDashboardIfNew(){
   const data = await fetchFeedback();
-  const newDataExists = data.some(d=>!previousTimestamps.has(d.Timestamp));
-  if(newDataExists){
+  const hasNew = data.some(d=>!previousTimestamps.has(d.Timestamp));
+  if(hasNew){
     document.getElementById('totalFeedback').textContent = data.length;
     document.getElementById('allDayRating').textContent = "⭐ "+calculateAllDayRating(data)+" / 5";
     prepareCharts(data);
@@ -196,8 +176,6 @@ async function updateDashboardIfNew(){
 
 // Initial load
 updateDashboardIfNew();
-
-// Poll every 10s for new submissions
 setInterval(updateDashboardIfNew, 10000);
 </script>
 </body>
