@@ -6,11 +6,15 @@
 <title>Dairy Queen Admin Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
-body{font-family:Arial;background:#fff5f5;text-align:center;padding:20px;}
-.container{max-width:1000px;margin:auto;background:white;padding:30px;border-radius:10px;box-shadow:0 0 15px rgba(0,0,0,0.1);}
-h1{color:#d71920;}
-h2{color:#0057a4;}
-canvas{margin-top:30px;}
+body {font-family:Arial;background:#fff5f5;text-align:center;padding:20px;}
+.container {max-width:1000px;margin:auto;background:white;padding:30px;border-radius:10px;box-shadow:0 0 15px rgba(0,0,0,0.1);}
+h1 {color:#d71920;}
+h2 {color:#0057a4;}
+canvas {margin-top:30px;}
+table {width:100%;border-collapse:collapse;margin-top:30px;}
+th, td {border:1px solid #ccc;padding:8px;text-align:center;}
+th {background:#d71920;color:white;}
+tr:nth-child(even){background:#f9f9f9;}
 </style>
 </head>
 <body>
@@ -18,12 +22,29 @@ canvas{margin-top:30px;}
 <h1>Dairy Queen Customer Feedback Dashboard</h1>
 <h2>All-Day Rating: <span id="allDayRating">⭐ 0 / 5</span></h2>
 <h2>Total Feedback Submitted: <span id="totalFeedback">0</span></h2>
+
 <canvas id="ratingChart"></canvas>
 <canvas id="recommendChart"></canvas>
+
+<h2>All Feedback Ratings</h2>
+<table id="feedbackTable">
+<thead>
+<tr>
+<th>Timestamp</th>
+<th>Overall</th>
+<th>Taste</th>
+<th>Service</th>
+<th>Cleanliness</th>
+<th>Recommend</th>
+<th>Average</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
 </div>
 
 <script>
-const SHEET_JSON_URL = "https://script.google.com/macros/s/AKfycbzm2E_uPG7ixZB9dDPjexBfGCOdnmeabiqC9zdQMxSmaxNu6g1U1fQxrsx8tLDYsUmscg/exec";
+const SHEET_JSON_URL = "https://script.google.com/macros/s/AKfycbzm2E_uPG7ixZB9dDPjexBfGCOdnmeabiqC9zdQMxSmaxNu6g1U1fQxrsx8tLDYsUmscg/exec"; // Replace with your Apps Script URL
 
 async function fetchFeedback(){
   const res = await fetch(SHEET_JSON_URL);
@@ -37,6 +58,7 @@ function calculateAllDayRating(data){
 }
 
 function prepareCharts(data){
+  // Bar chart: Overall Ratings
   const ratingCounts=[0,0,0,0,0];
   data.forEach(d=>{
     const r=Math.round(Number(d.Overall_Rating));
@@ -48,6 +70,7 @@ function prepareCharts(data){
     options:{responsive:true,plugins:{legend:{display:false}}}
   });
 
+  // Pie chart: Recommend
   let yes=0,no=0;
   data.forEach(d=>d.Recommend==='Yes'?yes++:no++);
   new Chart(document.getElementById('recommendChart').getContext('2d'),{
@@ -57,11 +80,30 @@ function prepareCharts(data){
   });
 }
 
+function populateTable(data){
+  const tbody = document.querySelector('#feedbackTable tbody');
+  tbody.innerHTML=''; // Clear existing
+  data.forEach(d=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td>${d.Timestamp}</td>
+      <td>${d.Overall_Rating}</td>
+      <td>${d.Taste_Rating}</td>
+      <td>${d.Service_Rating}</td>
+      <td>${d.Cleanliness_Rating}</td>
+      <td>${d.Recommend}</td>
+      <td>${Number(d.Average_Rating).toFixed(2)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
 async function initDashboard(){
   const data = await fetchFeedback();
   document.getElementById('totalFeedback').textContent = data.length;
   document.getElementById('allDayRating').textContent = "⭐ "+calculateAllDayRating(data)+" / 5";
   prepareCharts(data);
+  populateTable(data);
 }
 
 initDashboard();
