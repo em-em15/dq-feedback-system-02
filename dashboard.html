@@ -1,45 +1,134 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dairy Queen Admin Dashboard</title>
+<title>Dairy Queen Customer Feedback Dashboard</title>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <style>
-body {font-family: Arial; background:#fff5f5; text-align:center; padding:20px;}
-.container {max-width:1000px; margin:auto; background:white; padding:20px; border-radius:10px; box-shadow:0 0 15px rgba(0,0,0,0.1);}
-h1 {color:#d71920; font-size:26px;}
-h2 {color:#0057a4; font-size:20px; margin-top:10px;}
-canvas {margin-top:15px;}
-table {width:100%; border-collapse:collapse; margin-top:20px; font-size:14px;}
-th, td {border:1px solid #ccc; padding:6px; text-align:center;}
-th {background:#d71920; color:white;}
-tr:nth-child(even){background:#f9f9f9;}
-td.comments {text-align:left; max-width:250px; word-wrap:break-word;}
-.highlight {animation: highlightAnim 2s ease;}
-@keyframes highlightAnim {0% {background-color: #ffff99;} 100% {background-color: transparent;}}
-.mini-chart {width:180px; height:130px; margin:10px; display:inline-block;}
+
+body{
+font-family:Arial;
+background:#f6f6f6;
+margin:0;
+padding:20px;
+text-align:center;
+}
+
+h1{
+color:#d71920;
+}
+
+.dashboard{
+max-width:1100px;
+margin:auto;
+background:white;
+padding:20px;
+border-radius:10px;
+box-shadow:0 0 10px rgba(0,0,0,0.1);
+}
+
+.metrics{
+display:flex;
+justify-content:space-around;
+margin-bottom:20px;
+}
+
+.card{
+background:#0057a4;
+color:white;
+padding:15px;
+border-radius:8px;
+width:180px;
+}
+
+.charts{
+display:flex;
+justify-content:center;
+flex-wrap:wrap;
+gap:20px;
+margin-top:10px;
+}
+
+canvas{
+background:white;
+padding:10px;
+border-radius:8px;
+box-shadow:0 0 5px rgba(0,0,0,0.1);
+}
+
+table{
+width:100%;
+margin-top:20px;
+border-collapse:collapse;
+}
+
+th,td{
+padding:8px;
+border:1px solid #ddd;
+font-size:13px;
+}
+
+th{
+background:#d71920;
+color:white;
+}
+
+.highlight{
+background:#fff3a6;
+animation:fade 2s forwards;
+}
+
+@keyframes fade{
+from{background:#fff3a6;}
+to{background:white;}
+}
+
+.comments{
+text-align:left;
+}
+
 </style>
 </head>
+
 <body>
-<div class="container">
-<h1>Dairy Queen Admin Dashboard</h1>
-<h2>All-Day Rating: <span id="allDayRating">⭐ 0 / 5</span></h2>
-<h2>Total Feedback Submitted: <span id="totalFeedback">0</span></h2>
 
-<!-- Overall and Recommend charts -->
-<canvas id="overallChart" width="600" height="250"></canvas>
-<canvas id="recommendChart" width="400" height="250"></canvas>
+<div class="dashboard">
 
-<h2>Mini Metrics Charts (Frequency)</h2>
-<div id="miniCharts">
-  <canvas id="tasteChart" class="mini-chart"></canvas>
-  <canvas id="serviceChart" class="mini-chart"></canvas>
-  <canvas id="cleanChart" class="mini-chart"></canvas>
+<h1>Dairy Queen Feedback Dashboard</h1>
+
+<div class="metrics">
+
+<div class="card">
+<h3>All Day Rating</h3>
+<span id="avgRating">0</span> ⭐
 </div>
 
-<h2>All Feedback</h2>
+<div class="card">
+<h3>Total Feedback</h3>
+<span id="totalFeedback">0</span>
+</div>
+
+</div>
+
+<div class="charts">
+
+<canvas id="overallChart" width="350" height="180"></canvas>
+<canvas id="recommendChart" width="220" height="180"></canvas>
+
+</div>
+
+<div class="charts">
+
+<canvas id="tasteChart" width="150" height="120"></canvas>
+<canvas id="serviceChart" width="150" height="120"></canvas>
+<canvas id="cleanChart" width="150" height="120"></canvas>
+
+</div>
+
 <table id="feedbackTable">
+
 <thead>
 <tr>
 <th>Timestamp</th>
@@ -52,135 +141,214 @@ td.comments {text-align:left; max-width:250px; word-wrap:break-word;}
 <th>Comments</th>
 </tr>
 </thead>
+
 <tbody></tbody>
+
 </table>
+
 </div>
 
 <script>
-const SHEET_JSON_URL = "https://script.google.com/macros/s/AKfycbxAOi2VgIGGv-gK_RFvWVHB5Y4tANirt82oqMUVUFS2WsOcju19l0fNILp5f2oNbyQgGQ/exec";
-let previousTimestamps = new Set();
-let overallChart, recommendChart, tasteChart, serviceChart, cleanChart;
 
-// Utilities
-const safeNumber = val => isNaN(Number(val)) ? 0 : Number(val);
-const safeString = val => (val===undefined || val===null) ? '' : val;
-const parseDate = val => val ? new Date(val) : new Date();
+const API_URL = "https://script.google.com/macros/s/AKfycbxAOi2VgIGGv-gK_RFvWVHB5Y4tANirt82oqMUVUFS2WsOcju19l0fNILp5f2oNbyQgGQ/exec";
 
-// Fetch feedback
-async function fetchFeedback(){
-  try{
-    const res = await fetch(SHEET_JSON_URL);
-    const data = await res.json();
-    return data.map(d=>({
-      Timestamp: safeString(d.Timestamp),
-      Overall_RATING: safeNumber(d.Overall_RATING),
-      Taste_RATING: safeNumber(d.Taste_RATING),
-      Service_RATING: safeNumber(d.Service_RATING),
-      Cleanliness_RATING: safeNumber(d.Cleanliness_RATING),
-      Recommend: safeString(d.Recommend),
-      Comments: safeString(d.Comments),
-      Average_RATING: safeNumber(d.Average_RATING)
-    }));
-  }catch(err){
-    console.error("Error fetching feedback:", err);
-    return [];
-  }
+let previousIDs = new Set();
+
+async function fetchData(){
+
+const res = await fetch(API_URL);
+const data = await res.json();
+
+return data.map(r=>({
+
+Timestamp:r.Timestamp || "",
+
+Overall:Number(r.Overall_RATING)||0,
+
+Taste:Number(r.Taste_RATING)||0,
+
+Service:Number(r.Service_RATING)||0,
+
+Clean:Number(r.Cleanliness_RATING)||0,
+
+Recommend:r.Recommend||"",
+
+Comments:r.Comments||"",
+
+Average:Number(r.Average_RATING)||0
+
+}));
+
 }
 
-// All-day average
-function calculateAllDayRating(data){
-  const valid = data.filter(d=>d.Average_RATING>0);
-  const avg = valid.reduce((sum,d)=>sum+d.Average_RATING,0)/Math.max(valid.length,1);
-  return avg.toFixed(2);
+function buildFrequency(list){
+
+let freq=[0,0,0,0,0];
+
+list.forEach(v=>{
+if(v>=1 && v<=5) freq[v-1]++;
+});
+
+return freq;
+
 }
 
-// Render charts
 function renderCharts(data){
-  [overallChart, recommendChart, tasteChart, serviceChart, cleanChart].forEach(c => c && c.destroy());
 
-  // Overall ratings
-  const overallCounts = [0,0,0,0,0];
-  data.forEach(d=>{ const r=Math.round(d.Overall_RATING); if(r>=1 && r<=5) overallCounts[r-1]++; });
-  overallChart = new Chart(document.getElementById('overallChart').getContext('2d'), {
-    type:'bar',
-    data:{labels:['1 Star','2 Stars','3 Stars','4 Stars','5 Stars'], datasets:[{label:'Overall Ratings', data:overallCounts, backgroundColor:'#d71920'}]},
-    options:{plugins:{legend:{display:false}}, responsive:true, maintainAspectRatio:false}
-  });
+const overallFreq = buildFrequency(data.map(d=>d.Overall));
+const tasteFreq = buildFrequency(data.map(d=>d.Taste));
+const serviceFreq = buildFrequency(data.map(d=>d.Service));
+const cleanFreq = buildFrequency(data.map(d=>d.Clean));
 
-  // Recommend pie
-  let yes=0, no=0;
-  data.forEach(d=>{ if(d.Recommend==='Yes') yes++; else if(d.Recommend==='No') no++; });
-  recommendChart = new Chart(document.getElementById('recommendChart').getContext('2d'), {
-    type:'pie',
-    data:{labels:['Yes','No'], datasets:[{data:[yes,no], backgroundColor:['#d71920','#0057a4']}]},
-    options:{plugins:{legend:{position:'bottom'}}, responsive:true, maintainAspectRatio:false}
-  });
+let yes=0,no=0;
 
-  // Mini charts frequency
-  function buildFrequency(arr){
-    let freq=[0,0,0,0,0];
-    arr.forEach(v=>{ const r=Math.round(v); if(r>=1 && r<=5) freq[r-1]++; });
-    return freq;
-  }
-  const tasteFreq = buildFrequency(data.map(d=>d.Taste_RATING));
-  const serviceFreq = buildFrequency(data.map(d=>d.Service_RATING));
-  const cleanFreq = buildFrequency(data.map(d=>d.Cleanliness_RATING));
+data.forEach(d=>{
+if(d.Recommend=="Yes") yes++;
+if(d.Recommend=="No") no++;
+});
 
-  tasteChart = new Chart(document.getElementById('tasteChart').getContext('2d'), {
-    type:'bar', 
-    data:{labels:[1,2,3,4,5], datasets:[{label:'Taste Frequency', data:tasteFreq, backgroundColor:'#f4a261'}]},
-    options:{responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}}, maintainAspectRatio:false}
-  });
-  serviceChart = new Chart(document.getElementById('serviceChart').getContext('2d'), {
-    type:'bar', 
-    data:{labels:[1,2,3,4,5], datasets:[{label:'Service Frequency', data:serviceFreq, backgroundColor:'#2a9d8f'}]},
-    options:{responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}}, maintainAspectRatio:false}
-  });
-  cleanChart = new Chart(document.getElementById('cleanChart').getContext('2d'), {
-    type:'bar', 
-    data:{labels:[1,2,3,4,5], datasets:[{label:'Cleanliness Frequency', data:cleanFreq, backgroundColor:'#e9c46a'}]},
-    options:{responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}}, maintainAspectRatio:false}
-  });
+new Chart(document.getElementById("overallChart"),{
+
+type:"bar",
+
+data:{
+labels:[1,2,3,4,5],
+datasets:[{
+label:"Overall Ratings",
+data:overallFreq,
+backgroundColor:"#d71920"
+}]
+},
+
+options:{responsive:false}
+
+});
+
+new Chart(document.getElementById("recommendChart"),{
+
+type:"pie",
+
+data:{
+labels:["Yes","No"],
+datasets:[{
+data:[yes,no],
+backgroundColor:["#0057a4","#d71920"]
+}]
+},
+
+options:{responsive:false}
+
+});
+
+new Chart(document.getElementById("tasteChart"),{
+
+type:"bar",
+
+data:{
+labels:[1,2,3,4,5],
+datasets:[{data:tasteFreq,backgroundColor:"#f4a261"}]
+},
+
+options:{plugins:{legend:{display:false}},responsive:false}
+
+});
+
+new Chart(document.getElementById("serviceChart"),{
+
+type:"bar",
+
+data:{
+labels:[1,2,3,4,5],
+datasets:[{data:serviceFreq,backgroundColor:"#2a9d8f"}]
+},
+
+options:{plugins:{legend:{display:false}},responsive:false}
+
+});
+
+new Chart(document.getElementById("cleanChart"),{
+
+type:"bar",
+
+data:{
+labels:[1,2,3,4,5],
+datasets:[{data:cleanFreq,backgroundColor:"#e9c46a"}]
+},
+
+options:{plugins:{legend:{display:false}},responsive:false}
+
+});
+
 }
 
-// Populate table
 function populateTable(data){
-  const tbody = document.querySelector('#feedbackTable tbody');
-  tbody.innerHTML='';
-  data.sort((a,b)=>parseDate(b.Timestamp)-parseDate(a.Timestamp));
-  const newTimestamps = new Set();
-  data.forEach(d=>{
-    const tr = document.createElement('tr');
-    if(!previousTimestamps.has(d.Timestamp)) tr.classList.add('highlight');
-    tr.innerHTML = `
-      <td>${d.Timestamp}</td>
-      <td>${d.Overall_RATING}</td>
-      <td>${d.Taste_RATING}</td>
-      <td>${d.Service_RATING}</td>
-      <td>${d.Cleanliness_RATING}</td>
-      <td>${d.Recommend}</td>
-      <td>${d.Average_RATING.toFixed(2)}</td>
-      <td class="comments">${d.Comments}</td>
-    `;
-    tbody.appendChild(tr);
-    newTimestamps.add(d.Timestamp);
-  });
-  previousTimestamps = newTimestamps;
+
+const tbody=document.querySelector("#feedbackTable tbody");
+
+tbody.innerHTML="";
+
+data.sort((a,b)=>new Date(b.Timestamp)-new Date(a.Timestamp));
+
+let newIDs=new Set();
+
+data.forEach(row=>{
+
+const tr=document.createElement("tr");
+
+if(!previousIDs.has(row.Timestamp)){
+tr.classList.add("highlight");
 }
 
-// Update dashboard
+tr.innerHTML=`
+<td>${row.Timestamp}</td>
+<td>${row.Overall}</td>
+<td>${row.Taste}</td>
+<td>${row.Service}</td>
+<td>${row.Clean}</td>
+<td>${row.Recommend}</td>
+<td>${row.Average.toFixed(2)}</td>
+<td class="comments">${row.Comments}</td>
+`;
+
+tbody.appendChild(tr);
+
+newIDs.add(row.Timestamp);
+
+});
+
+previousIDs=newIDs;
+
+}
+
+function computeAverage(data){
+
+let valid=data.filter(d=>d.Average>0);
+
+let avg=valid.reduce((sum,d)=>sum+d.Average,0)/valid.length;
+
+return avg.toFixed(2);
+
+}
+
 async function updateDashboard(){
-  const data = await fetchFeedback();
-  if(!data.length) return;
-  document.getElementById('totalFeedback').textContent = data.length;
-  document.getElementById('allDayRating').textContent = "⭐ "+calculateAllDayRating(data)+" / 5";
-  renderCharts(data);
-  populateTable(data);
+
+const data=await fetchData();
+
+document.getElementById("totalFeedback").innerText=data.length;
+
+document.getElementById("avgRating").innerText=computeAverage(data);
+
+renderCharts(data);
+
+populateTable(data);
+
 }
 
-// Initial load
 updateDashboard();
-setInterval(updateDashboard, 10000);
+
+setInterval(updateDashboard,10000);
+
 </script>
+
 </body>
 </html>
