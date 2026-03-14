@@ -9,7 +9,7 @@ body {font-family: Arial; background:#fff5f5; text-align:center; padding:20px;}
 .container {max-width:600px; margin:auto; background:white; padding:30px; border-radius:10px; box-shadow:0 0 10px rgba(0,0,0,0.1);}
 h1 {color:#d71920;}
 label {display:block; margin-top:15px; font-weight:bold; text-align:left;}
-input[type="number"], select, textarea {width:100%; padding:10px; margin-top:5px; border-radius:5px; border:1px solid #ccc;}
+select, textarea {width:100%; padding:10px; margin-top:5px; border-radius:5px; border:1px solid #ccc;}
 button {margin-top:20px; padding:15px 30px; background:#d71920; color:white; font-size:16px; border:none; border-radius:5px; cursor:pointer;}
 button:hover {background:#b3121b;}
 #thankYou {display:none; margin-top:20px; font-size:18px; color:#0057a4;}
@@ -21,17 +21,45 @@ button:hover {background:#b3121b;}
 <p>Fill out the form and get a <strong>FREE Ice Cream in a Cone!</strong></p>
 
 <form id="feedbackForm">
-  <label>Overall Rating (1-5)</label>
-  <input type="number" name="Overall_RATING" min="1" max="5" required>
+  <label>Overall Rating</label>
+  <select name="Overall_RATING" required>
+    <option value="">Select</option>
+    <option value="1">1 – Poor</option>
+    <option value="2">2 – Fair</option>
+    <option value="3">3 – Good</option>
+    <option value="4">4 – Very Good</option>
+    <option value="5">5 – Excellent</option>
+  </select>
 
-  <label>Taste Rating (1-5)</label>
-  <input type="number" name="Taste_RATING" min="1" max="5" required>
+  <label>Taste Rating</label>
+  <select name="Taste_RATING" required>
+    <option value="">Select</option>
+    <option value="1">1 – Poor</option>
+    <option value="2">2 – Fair</option>
+    <option value="3">3 – Good</option>
+    <option value="4">4 – Very Good</option>
+    <option value="5">5 – Excellent</option>
+  </select>
 
-  <label>Service Rating (1-5)</label>
-  <input type="number" name="Service_RATING" min="1" max="5" required>
+  <label>Service Rating</label>
+  <select name="Service_RATING" required>
+    <option value="">Select</option>
+    <option value="1">1 – Poor</option>
+    <option value="2">2 – Fair</option>
+    <option value="3">3 – Good</option>
+    <option value="4">4 – Very Good</option>
+    <option value="5">5 – Excellent</option>
+  </select>
 
-  <label>Cleanliness Rating (1-5)</label>
-  <input type="number" name="Cleanliness_RATING" min="1" max="5" required>
+  <label>Cleanliness Rating</label>
+  <select name="Cleanliness_RATING" required>
+    <option value="">Select</option>
+    <option value="1">1 – Poor</option>
+    <option value="2">2 – Fair</option>
+    <option value="3">3 – Good</option>
+    <option value="4">4 – Very Good</option>
+    <option value="5">5 – Excellent</option>
+  </select>
 
   <label>Would you recommend us?</label>
   <select name="Recommend" required>
@@ -52,24 +80,32 @@ button:hover {background:#b3121b;}
 </div>
 
 <script>
-const FORM_ACTION_URL = "https://script.google.com/macros/s/AKfycbzXgPWkLRM0mySXw2L90N5LwpeeP12jzoZehRd935aqEPRqUEWuM1m2CQOBbvy7DargKw/exec"; // Your Apps Script URL
+const FORM_ACTION_URL = "https://script.google.com/macros/s/AKfycbzXgPWkLRM0mySXw2L90N5LwpeeP12jzoZehRd935aqEPRqUEWuM1m2CQOBbvy7DargKw/exec"; // Replace with your Apps Script URL
 
 document.getElementById("feedbackForm").addEventListener("submit", async function(e){
   e.preventDefault();
   const data = new FormData(this);
 
+  // Calculate average rating
+  const overall = Number(data.get("Overall_RATING")) || 0;
+  const taste = Number(data.get("Taste_RATING")) || 0;
+  const service = Number(data.get("Service_RATING")) || 0;
+  const clean = Number(data.get("Cleanliness_RATING")) || 0;
+  const average = ((overall + taste + service + clean)/4).toFixed(2);
+  data.append("Average_RATING", average);
+
   try {
-    const res = await fetch(FORM_ACTION_URL, {method:"POST", body:data});
-    const result = await res.json();
+    const response = await fetch(FORM_ACTION_URL, {method:"POST", body:data});
+    const result = await response.json();
     if(result.status==="success"){
       document.getElementById("feedbackForm").style.display="none";
       document.getElementById("thankYou").style.display="block";
     } else {
-      alert("Error submitting feedback: "+result.message);
+      alert("Error submitting feedback: " + result.message);
     }
   } catch(err){
     console.error(err);
-    alert("Error sending feedback. Try again later.");
+    alert("Error sending feedback. Please try again later.");
   }
 });
 </script>
