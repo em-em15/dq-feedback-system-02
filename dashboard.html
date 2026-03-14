@@ -7,18 +7,18 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
 body {font-family: Arial; background:#fff5f5; text-align:center; padding:20px;}
-.container {max-width:1200px; margin:auto; background:white; padding:30px; border-radius:10px; box-shadow:0 0 15px rgba(0,0,0,0.1);}
-h1 {color:#d71920;}
-h2 {color:#0057a4;}
-canvas {margin-top:20px;}
-table {width:100%; border-collapse:collapse; margin-top:30px;}
-th, td {border:1px solid #ccc; padding:8px; text-align:center;}
+.container {max-width:1000px; margin:auto; background:white; padding:20px; border-radius:10px; box-shadow:0 0 15px rgba(0,0,0,0.1);}
+h1 {color:#d71920; font-size:26px;}
+h2 {color:#0057a4; font-size:20px; margin-top:10px;}
+canvas {margin-top:15px;}
+table {width:100%; border-collapse:collapse; margin-top:20px; font-size:14px;}
+th, td {border:1px solid #ccc; padding:6px; text-align:center;}
 th {background:#d71920; color:white;}
 tr:nth-child(even){background:#f9f9f9;}
-td.comments {text-align:left; max-width:300px; word-wrap:break-word;}
+td.comments {text-align:left; max-width:250px; word-wrap:break-word;}
 .highlight {animation: highlightAnim 2s ease;}
 @keyframes highlightAnim {0% {background-color: #ffff99;} 100% {background-color: transparent;}}
-.mini-chart {width:200px; height:150px; margin:20px; display:inline-block;}
+.mini-chart {width:180px; height:130px; margin:10px; display:inline-block;}
 </style>
 </head>
 <body>
@@ -27,10 +27,11 @@ td.comments {text-align:left; max-width:300px; word-wrap:break-word;}
 <h2>All-Day Rating: <span id="allDayRating">⭐ 0 / 5</span></h2>
 <h2>Total Feedback Submitted: <span id="totalFeedback">0</span></h2>
 
-<canvas id="overallChart"></canvas>
-<canvas id="recommendChart"></canvas>
+<!-- Overall and Recommend charts -->
+<canvas id="overallChart" width="600" height="250"></canvas>
+<canvas id="recommendChart" width="400" height="250"></canvas>
 
-<h2>Mini Metrics Charts</h2>
+<h2>Mini Metrics Charts (Frequency)</h2>
 <div id="miniCharts">
   <canvas id="tasteChart" class="mini-chart"></canvas>
   <canvas id="serviceChart" class="mini-chart"></canvas>
@@ -56,16 +57,16 @@ td.comments {text-align:left; max-width:300px; word-wrap:break-word;}
 </div>
 
 <script>
-const SHEET_JSON_URL = "https://script.google.com/macros/s/AKfycbxReLHbqTT5FiY7Jy5SELKFbZvzVJDqzhiHjU0h-_iuWhUHfRMIcTvcK5WHEK3h34ZGCw/exec"; // Replace with your Apps Script URL
+const SHEET_JSON_URL = "https://script.google.com/macros/s/AKfycbxReLHbqTT5FiY7Jy5SELKFbZvzVJDqzhiHjU0h-_iuWhUHfRMIcTvcK5WHEK3h34ZGCw/execE";
 let previousTimestamps = new Set();
 let overallChart, recommendChart, tasteChart, serviceChart, cleanChart;
 
-// Utility functions
+// Utilities
 const safeNumber = val => isNaN(Number(val)) ? 0 : Number(val);
 const safeString = val => (val===undefined || val===null) ? '' : val;
 const parseDate = val => val ? new Date(val) : new Date();
 
-// Fetch data
+// Fetch feedback
 async function fetchFeedback(){
   try{
     const res = await fetch(SHEET_JSON_URL);
@@ -86,7 +87,7 @@ async function fetchFeedback(){
   }
 }
 
-// Calculate all-day rating
+// All-day average
 function calculateAllDayRating(data){
   const valid = data.filter(d=>d.Average_RATING>0);
   const avg = valid.reduce((sum,d)=>sum+d.Average_RATING,0)/Math.max(valid.length,1);
@@ -97,37 +98,48 @@ function calculateAllDayRating(data){
 function renderCharts(data){
   [overallChart, recommendChart, tasteChart, serviceChart, cleanChart].forEach(c => c && c.destroy());
 
-  // Overall Ratings
+  // Overall ratings
   const overallCounts = [0,0,0,0,0];
   data.forEach(d=>{ const r=Math.round(d.Overall_RATING); if(r>=1 && r<=5) overallCounts[r-1]++; });
   overallChart = new Chart(document.getElementById('overallChart').getContext('2d'), {
     type:'bar',
     data:{labels:['1 Star','2 Stars','3 Stars','4 Stars','5 Stars'], datasets:[{label:'Overall Ratings', data:overallCounts, backgroundColor:'#d71920'}]},
-    options:{plugins:{legend:{display:false}}, responsive:true}
+    options:{plugins:{legend:{display:false}}, responsive:true, maintainAspectRatio:false}
   });
 
-  // Recommend Pie
+  // Recommend pie
   let yes=0, no=0;
   data.forEach(d=>{ if(d.Recommend==='Yes') yes++; else if(d.Recommend==='No') no++; });
   recommendChart = new Chart(document.getElementById('recommendChart').getContext('2d'), {
     type:'pie',
     data:{labels:['Yes','No'], datasets:[{data:[yes,no], backgroundColor:['#d71920','#0057a4']}]},
-    options:{plugins:{legend:{position:'bottom'}}, responsive:true}
+    options:{plugins:{legend:{position:'bottom'}}, responsive:true, maintainAspectRatio:false}
   });
 
-  // Mini charts
-  const timestamps = data.map(d=>d.Timestamp);
+  // Mini charts frequency
+  function buildFrequency(arr){
+    let freq=[0,0,0,0,0];
+    arr.forEach(v=>{ const r=Math.round(v); if(r>=1 && r<=5) freq[r-1]++; });
+    return freq;
+  }
+  const tasteFreq = buildFrequency(data.map(d=>d.Taste_RATING));
+  const serviceFreq = buildFrequency(data.map(d=>d.Service_RATING));
+  const cleanFreq = buildFrequency(data.map(d=>d.Cleanliness_RATING));
+
   tasteChart = new Chart(document.getElementById('tasteChart').getContext('2d'), {
-    type:'bar', data:{labels:timestamps, datasets:[{label:'Taste', data:data.map(d=>d.Taste_RATING), backgroundColor:'#f4a261'}]},
-    options:{responsive:true, plugins:{legend:{display:false}}, scales:{y:{min:0,max:5}}}
+    type:'bar', 
+    data:{labels:[1,2,3,4,5], datasets:[{label:'Taste Frequency', data:tasteFreq, backgroundColor:'#f4a261'}]},
+    options:{responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}}, maintainAspectRatio:false}
   });
   serviceChart = new Chart(document.getElementById('serviceChart').getContext('2d'), {
-    type:'bar', data:{labels:timestamps, datasets:[{label:'Service', data:data.map(d=>d.Service_RATING), backgroundColor:'#2a9d8f'}]},
-    options:{responsive:true, plugins:{legend:{display:false}}, scales:{y:{min:0,max:5}}}
+    type:'bar', 
+    data:{labels:[1,2,3,4,5], datasets:[{label:'Service Frequency', data:serviceFreq, backgroundColor:'#2a9d8f'}]},
+    options:{responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}}, maintainAspectRatio:false}
   });
   cleanChart = new Chart(document.getElementById('cleanChart').getContext('2d'), {
-    type:'bar', data:{labels:timestamps, datasets:[{label:'Cleanliness', data:data.map(d=>d.Cleanliness_RATING), backgroundColor:'#e9c46a'}]},
-    options:{responsive:true, plugins:{legend:{display:false}}, scales:{y:{min:0,max:5}}}
+    type:'bar', 
+    data:{labels:[1,2,3,4,5], datasets:[{label:'Cleanliness Frequency', data:cleanFreq, backgroundColor:'#e9c46a'}]},
+    options:{responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}}, maintainAspectRatio:false}
   });
 }
 
@@ -168,7 +180,6 @@ async function updateDashboard(){
 
 // Initial load
 updateDashboard();
-// Refresh every 10 seconds
 setInterval(updateDashboard, 10000);
 </script>
 </body>
