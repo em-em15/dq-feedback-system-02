@@ -56,16 +56,16 @@ td.comments {text-align:left; max-width:300px; word-wrap:break-word;}
 </div>
 
 <script>
-// === CONFIG ===
-const SHEET_JSON_URL = "https://script.google.com/macros/s/AKfycbwy3-EBNsxg0qcztq6NG2vKfiNYQC3rJlAiq7mYBGqRRiksZGXoAb-ct1xeYKOc2FC0Dw/exec"; // Apps Script JSON endpoint
+const SHEET_JSON_URL = "https://script.google.com/macros/s/AKfycbxReLHbqTT5FiY7Jy5SELKFbZvzVJDqzhiHjU0h-_iuWhUHfRMIcTvcK5WHEK3h34ZGCw/exec"; // Replace with your Apps Script URL
+let previousTimestamps = new Set();
+let overallChart, recommendChart, tasteChart, serviceChart, cleanChart;
 
-// === UTILITY FUNCTIONS ===
+// Utility functions
 const safeNumber = val => isNaN(Number(val)) ? 0 : Number(val);
 const safeString = val => (val===undefined || val===null) ? '' : val;
 const parseDate = val => val ? new Date(val) : new Date();
-let previousTimestamps = new Set();
 
-// === FETCH DATA ===
+// Fetch data
 async function fetchFeedback(){
   try{
     const res = await fetch(SHEET_JSON_URL);
@@ -86,22 +86,20 @@ async function fetchFeedback(){
   }
 }
 
-// === CALCULATE ALL-DAY AVERAGE ===
+// Calculate all-day rating
 function calculateAllDayRating(data){
   const valid = data.filter(d=>d.Average_RATING>0);
   const avg = valid.reduce((sum,d)=>sum+d.Average_RATING,0)/Math.max(valid.length,1);
   return avg.toFixed(2);
 }
 
-// === CHARTS ===
-let overallChart, recommendChart, tasteChart, serviceChart, cleanChart;
+// Render charts
 function renderCharts(data){
-  // Destroy old charts
   [overallChart, recommendChart, tasteChart, serviceChart, cleanChart].forEach(c => c && c.destroy());
 
-  // Overall Ratings Bar
+  // Overall Ratings
   const overallCounts = [0,0,0,0,0];
-  data.forEach(d => { const r = Math.round(d.Overall_RATING); if(r>=1 && r<=5) overallCounts[r-1]++; });
+  data.forEach(d=>{ const r=Math.round(d.Overall_RATING); if(r>=1 && r<=5) overallCounts[r-1]++; });
   overallChart = new Chart(document.getElementById('overallChart').getContext('2d'), {
     type:'bar',
     data:{labels:['1 Star','2 Stars','3 Stars','4 Stars','5 Stars'], datasets:[{label:'Overall Ratings', data:overallCounts, backgroundColor:'#d71920'}]},
@@ -111,13 +109,13 @@ function renderCharts(data){
   // Recommend Pie
   let yes=0, no=0;
   data.forEach(d=>{ if(d.Recommend==='Yes') yes++; else if(d.Recommend==='No') no++; });
-  recommendChart = new Chart(document.getElementById('recommendChart').getContext('2d'),{
+  recommendChart = new Chart(document.getElementById('recommendChart').getContext('2d'), {
     type:'pie',
     data:{labels:['Yes','No'], datasets:[{data:[yes,no], backgroundColor:['#d71920','#0057a4']}]},
     options:{plugins:{legend:{position:'bottom'}}, responsive:true}
   });
 
-  // Mini charts: Taste, Service, Cleanliness
+  // Mini charts
   const timestamps = data.map(d=>d.Timestamp);
   tasteChart = new Chart(document.getElementById('tasteChart').getContext('2d'), {
     type:'bar', data:{labels:timestamps, datasets:[{label:'Taste', data:data.map(d=>d.Taste_RATING), backgroundColor:'#f4a261'}]},
@@ -133,12 +131,11 @@ function renderCharts(data){
   });
 }
 
-// === POPULATE TABLE ===
+// Populate table
 function populateTable(data){
   const tbody = document.querySelector('#feedbackTable tbody');
   tbody.innerHTML='';
-  data.sort((a,b)=>parseDate(b.Timestamp)-parseDate(a.Timestamp)); // newest first
-
+  data.sort((a,b)=>parseDate(b.Timestamp)-parseDate(a.Timestamp));
   const newTimestamps = new Set();
   data.forEach(d=>{
     const tr = document.createElement('tr');
@@ -159,7 +156,7 @@ function populateTable(data){
   previousTimestamps = newTimestamps;
 }
 
-// === UPDATE DASHBOARD ===
+// Update dashboard
 async function updateDashboard(){
   const data = await fetchFeedback();
   if(!data.length) return;
@@ -171,7 +168,7 @@ async function updateDashboard(){
 
 // Initial load
 updateDashboard();
-// Auto-refresh every 10 seconds (optional)
+// Refresh every 10 seconds
 setInterval(updateDashboard, 10000);
 </script>
 </body>
