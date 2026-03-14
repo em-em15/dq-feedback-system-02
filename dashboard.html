@@ -11,17 +11,10 @@ body {font-family:Arial;background:#fff5f5;text-align:center;padding:20px;}
 h1 {color:#d71920;}
 h2 {color:#0057a4;}
 canvas {margin-top:30px;}
-#recommendChart {max-width:300px;margin:20px auto;}
 table {width:100%;border-collapse:collapse;margin-top:30px;}
 th, td {border:1px solid #ccc;padding:8px;text-align:center;}
 th {background:#d71920;color:white;}
 tr:nth-child(even){background:#f9f9f9;}
-td.comments {text-align:left; max-width:300px; word-wrap:break-word;}
-.highlight {animation: highlightAnim 2s ease;}
-@keyframes highlightAnim {
-  0% {background-color: #ffff99;}
-  100% {background-color: transparent;}
-}
 </style>
 </head>
 <body>
@@ -36,128 +29,84 @@ td.comments {text-align:left; max-width:300px; word-wrap:break-word;}
 <h2>All Feedback Ratings</h2>
 <table id="feedbackTable">
 <thead>
-<tr id="tableHeader"></tr>
+<tr>
+<th>Timestamp</th>
+<th>Overall</th>
+<th>Taste</th>
+<th>Service</th>
+<th>Cleanliness</th>
+<th>Recommend</th>
+<th>Average</th>
+</tr>
 </thead>
 <tbody></tbody>
 </table>
 </div>
 
 <script>
-const SHEET_JSON_URL = "https://script.google.com/macros/s/AKfycbzm2E_uPG7ixZB9dDPjexBfGCOdnmeabiqC9zdQMxSmaxNu6g1U1fQxrsx8tLDYsUmscg/exec"; // replace with your Apps Script URL
-let ratingChart = null;
-let recommendChart = null;
-let previousTimestamps = new Set();
+const SHEET_JSON_URL = "https://script.google.com/macros/s/AKfycbzm2E_uPG7ixZB9dDPjexBfGCOdnmeabiqC9zdQMxSmaxNu6g1U1fQxrsx8tLDYsUmscg/exec"; // Replace with your Apps Script URL
 
-// Fetch feedback from Google Sheet
 async function fetchFeedback(){
-  try {
-    const res = await fetch(SHEET_JSON_URL);
-    const data = await res.json();
-    return data.slice(4); // skip first 4 rows
-  } catch(err){
-    console.error("Failed to fetch feedback:", err);
-    return [];
-  }
+  const res = await fetch(SHEET_JSON_URL);
+  return await res.json();
 }
 
-// Safe value for text
-function safeValue(val){ return val===undefined||val===null?'':val; }
-// Safe number
-function safeNumber(val){ const n = Number(val); return isNaN(n)?0:n; }
-
-// Calculate all-day rating
 function calculateAllDayRating(data){
-  let sum=0, count=0;
-  data.forEach(d=>{
-    const n = safeNumber(d.Overall_Rating);
-    if(n>0){ sum+=n; count++; }
-  });
-  return count? (sum/count).toFixed(2):0;
+  let sum=0;
+  data.forEach(d=>sum+=Number(d.Average_Rating));
+  return data.length?(sum/data.length).toFixed(2):0;
 }
 
-// Prepare charts
 function prepareCharts(data){
-  if(ratingChart) ratingChart.destroy();
-  if(recommendChart) recommendChart.destroy();
-
   // Bar chart: Overall Ratings
-  const ratingCounts = [0,0,0,0,0];
+  const ratingCounts=[0,0,0,0,0];
   data.forEach(d=>{
-    const r = Math.round(safeNumber(d.Overall_Rating));
+    const r=Math.round(Number(d.Overall_Rating));
     if(r>=1 && r<=5) ratingCounts[r-1]++;
   });
-  const ratingCtx = document.getElementById('ratingChart').getContext('2d');
-  ratingChart = new Chart(ratingCtx,{
+  new Chart(document.getElementById('ratingChart').getContext('2d'),{
     type:'bar',
-    data:{labels:['1 Star','2 Stars','3 Stars','4 Stars','5 Stars'], datasets:[{label:'Ratings', data:ratingCounts, backgroundColor:'#d71920'}]},
-    options:{responsive:true, plugins:{legend:{display:false}}}
+    data:{labels:['1 Star','2 Stars','3 Stars','4 Stars','5 Stars'],datasets:[{label:'Ratings',data:ratingCounts,backgroundColor:'#d71920'}]},
+    options:{responsive:true,plugins:{legend:{display:false}}}
   });
 
   // Pie chart: Recommend
-  let yes=0, no=0;
-  data.forEach(d=>{ if(d.Recommend==='Yes') yes++; else no++; });
-  const recommendCtx = document.getElementById('recommendChart').getContext('2d');
-  recommendChart = new Chart(recommendCtx,{
+  let yes=0,no=0;
+  data.forEach(d=>d.Recommend==='Yes'?yes++:no++);
+  new Chart(document.getElementById('recommendChart').getContext('2d'),{
     type:'pie',
-    data:{labels:['Recommend','Not Recommend'], datasets:[{data:[yes,no], backgroundColor:['#d71920','#0057a4']}]},
-    options:{responsive:true, plugins:{legend:{position:'bottom'}}}
+    data:{labels:['Recommend','Not Recommend'],datasets:[{data:[yes,no],backgroundColor:['#d71920','#0057a4']}]},
+    options:{responsive:true}
   });
 }
 
-// Generate table header dynamically
-function generateTableHeader(data){
-  const theadRow = document.getElementById('tableHeader');
-  theadRow.innerHTML='';
-  if(data.length===0) return;
-  Object.keys(data[0]).forEach(key=>{
-    const th = document.createElement('th');
-    th.textContent = key.replace(/_/g,' ');
-    theadRow.appendChild(th);
-  });
-}
-
-// Populate table dynamically
 function populateTable(data){
   const tbody = document.querySelector('#feedbackTable tbody');
-  tbody.innerHTML='';
-  const newTimestamps = new Set();
-
+  tbody.innerHTML=''; // Clear existing
   data.forEach(d=>{
-    const tr = document.createElement('tr');
-    const timestamp = safeValue(d.Timestamp);
-    const isNew = !previousTimestamps.has(timestamp);
-    if(isNew) tr.classList.add('highlight');
-
-    let tdHTML = '';
-    Object.keys(d).forEach(key=>{
-      tdHTML += <td class="${key.toLowerCase()==='comments'?'comments':''}">${safeValue(d[key])}</td>;
-    });
-    tr.innerHTML = tdHTML;
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td>${d.Timestamp}</td>
+      <td>${d.Overall_Rating}</td>
+      <td>${d.Taste_Rating}</td>
+      <td>${d.Service_Rating}</td>
+      <td>${d.Cleanliness_Rating}</td>
+      <td>${d.Recommend}</td>
+      <td>${Number(d.Average_Rating).toFixed(2)}</td>
+    `;
     tbody.appendChild(tr);
-    newTimestamps.add(timestamp);
   });
-
-  previousTimestamps = newTimestamps;
 }
 
-// Update dashboard if new submission
-async function updateDashboardIfNew(){
+async function initDashboard(){
   const data = await fetchFeedback();
-  const newDataExists = data.some(d => !previousTimestamps.has(safeValue(d.Timestamp)));
-  if(newDataExists){
-    document.getElementById('totalFeedback').textContent = data.length;
-    document.getElementById('allDayRating').textContent = "⭐ "+calculateAllDayRating(data)+" / 5";
-    generateTableHeader(data);
-    prepareCharts(data);
-    populateTable(data);
-  }
+  document.getElementById('totalFeedback').textContent = data.length;
+  document.getElementById('allDayRating').textContent = "⭐ "+calculateAllDayRating(data)+" / 5";
+  prepareCharts(data);
+  populateTable(data);
 }
 
-// Initial load
-updateDashboardIfNew();
-
-// Check for new submissions every 10 seconds
-setInterval(updateDashboardIfNew, 10000);
+initDashboard();
 </script>
 </body>
 </html>
