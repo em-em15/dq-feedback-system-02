@@ -11,7 +11,6 @@ body {font-family: Arial; background:#fff5f5; text-align:center; padding:20px;}
 h1 {color:#d71920;}
 h2 {color:#0057a4;}
 canvas {margin-top:20px;}
-#recommendChart, #miniCharts {margin:20px auto;}
 table {width:100%; border-collapse:collapse; margin-top:30px;}
 th, td {border:1px solid #ccc; padding:8px; text-align:center;}
 th {background:#d71920; color:white;}
@@ -57,8 +56,8 @@ td.comments {text-align:left; max-width:300px; word-wrap:break-word;}
 </div>
 
 <script>
-const SHEET_JSON_URL = "https://script.google.com/macros/s/AKfycbzXgPWkLRM0mySXw2L90N5LwpeeP12jzoZehRd935aqEPRqUEWuM1m2CQOBbvy7DargKw/exec"; // Replace with your Apps Script Web App URL
-let ratingChart = null, recommendChart = null, tasteChart = null, serviceChart = null, cleanChart = null;
+const SHEET_JSON_URL = "https://script.google.com/macros/s/AKfycbzXgPWkLRM0mySXw2L90N5LwpeeP12jzoZehRd935aqEPRqUEWuM1m2CQOBbvy7DargKw/exec"; // Your Apps Script JSON URL
+let ratingChart, recommendChart, tasteChart, serviceChart, cleanChart;
 let previousTimestamps = new Set();
 
 // Safe parsing
@@ -66,7 +65,7 @@ function safeNumber(val){ const n = Number(val); return isNaN(n)?0:n; }
 function safeValue(val){ return val===undefined||val===null?'':val; }
 function parseTimestamp(ts){ return new Date(ts); }
 
-// Fetch data
+// Fetch feedback data
 async function fetchFeedback(){
   try{
     const res = await fetch(SHEET_JSON_URL);
@@ -88,12 +87,12 @@ async function fetchFeedback(){
 function calculateAllDayRating(data){
   let sum=0, count=0;
   data.forEach(d=>{
-    if(d.Average_RATING>0){ sum += d.Average_RATING; count++; }
+    if(d.Average_RATING>0){ sum+=d.Average_RATING; count++; }
   });
-  return count ? (sum/count).toFixed(2) : 0;
+  return count? (sum/count).toFixed(2) : 0;
 }
 
-// Create charts
+// Prepare charts
 function prepareCharts(data){
   if(ratingChart) ratingChart.destroy();
   if(recommendChart) recommendChart.destroy();
@@ -101,7 +100,7 @@ function prepareCharts(data){
   if(serviceChart) serviceChart.destroy();
   if(cleanChart) cleanChart.destroy();
 
-  // Overall Ratings Bar
+  // Overall Rating Bar
   const ratingCounts = [0,0,0,0,0];
   data.forEach(d=>{
     const r = Math.round(d.Overall_RATING);
