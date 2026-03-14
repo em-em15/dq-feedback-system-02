@@ -36,46 +36,43 @@ td.comments {text-align:left; max-width:300px; word-wrap:break-word;}
 <h2>All Feedback Ratings</h2>
 <table id="feedbackTable">
 <thead>
-<tr id="tableHeader">
-<!-- Will dynamically generate headers -->
-</tr>
+<tr id="tableHeader"></tr>
 </thead>
 <tbody></tbody>
 </table>
 </div>
 
 <script>
-const SHEET_JSON_URL = "https://script.google.com/macros/s/AKfycbzm2E_uPG7ixZB9dDPjexBfGCOdnmeabiqC9zdQMxSmaxNu6g1U1fQxrsx8tLDYsUmscg/exec"; // Replace with your Apps Script URL
+const SHEET_JSON_URL = "https://script.google.com/macros/s/AKfycbzm2E_uPG7ixZB9dDPjexBfGCOdnmeabiqC9zdQMxSmaxNu6g1U1fQxrsx8tLDYsUmscg/exec"; // replace with your Apps Script URL
 let ratingChart = null;
 let recommendChart = null;
 let previousTimestamps = new Set();
 
-// Fetch data from Google Sheet
+// Fetch feedback from Google Sheet
 async function fetchFeedback(){
   try {
     const res = await fetch(SHEET_JSON_URL);
     const data = await res.json();
     return data.slice(4); // skip first 4 rows
-  } catch (err) {
+  } catch(err){
     console.error("Failed to fetch feedback:", err);
     return [];
   }
 }
 
-// Safely handle any value, including text
-function safeValue(value){
-  return (value === undefined || value === null) ? "" : value;
-}
+// Safe value for text
+function safeValue(val){ return val===undefined||val===null?'':val; }
+// Safe number
+function safeNumber(val){ const n = Number(val); return isNaN(n)?0:n; }
 
-// Calculate average of numeric fields only if valid
+// Calculate all-day rating
 function calculateAllDayRating(data){
-  let sum = 0;
-  let count = 0;
-  data.forEach(d => {
-    const val = Number(d.Average_Rating);
-    if(!isNaN(val)){ sum += val; count++; }
+  let sum=0, count=0;
+  data.forEach(d=>{
+    const n = safeNumber(d.Overall_Rating);
+    if(n>0){ sum+=n; count++; }
   });
-  return count ? (sum/count).toFixed(2) : 0;
+  return count? (sum/count).toFixed(2):0;
 }
 
 // Prepare charts
@@ -83,11 +80,11 @@ function prepareCharts(data){
   if(ratingChart) ratingChart.destroy();
   if(recommendChart) recommendChart.destroy();
 
-  // Overall Ratings Bar Chart
+  // Bar chart: Overall Ratings
   const ratingCounts = [0,0,0,0,0];
-  data.forEach(d => {
-    const r = Math.round(Number(d.Overall_Rating));
-    if(r >=1 && r <=5) ratingCounts[r-1]++;
+  data.forEach(d=>{
+    const r = Math.round(safeNumber(d.Overall_Rating));
+    if(r>=1 && r<=5) ratingCounts[r-1]++;
   });
   const ratingCtx = document.getElementById('ratingChart').getContext('2d');
   ratingChart = new Chart(ratingCtx,{
@@ -96,9 +93,9 @@ function prepareCharts(data){
     options:{responsive:true, plugins:{legend:{display:false}}}
   });
 
-  // Recommend Pie Chart
+  // Pie chart: Recommend
   let yes=0, no=0;
-  data.forEach(d => { if(d.Recommend==='Yes') yes++; else no++; });
+  data.forEach(d=>{ if(d.Recommend==='Yes') yes++; else no++; });
   const recommendCtx = document.getElementById('recommendChart').getContext('2d');
   recommendChart = new Chart(recommendCtx,{
     type:'pie',
@@ -107,34 +104,33 @@ function prepareCharts(data){
   });
 }
 
-// Dynamically generate table header from keys
+// Generate table header dynamically
 function generateTableHeader(data){
   const theadRow = document.getElementById('tableHeader');
-  theadRow.innerHTML = '';
-  if(data.length === 0) return;
-  Object.keys(data[0]).forEach(key => {
+  theadRow.innerHTML='';
+  if(data.length===0) return;
+  Object.keys(data[0]).forEach(key=>{
     const th = document.createElement('th');
     th.textContent = key.replace(/_/g,' ');
     theadRow.appendChild(th);
   });
 }
 
-// Populate table
+// Populate table dynamically
 function populateTable(data){
   const tbody = document.querySelector('#feedbackTable tbody');
   tbody.innerHTML='';
   const newTimestamps = new Set();
 
-  data.forEach(d => {
+  data.forEach(d=>{
     const tr = document.createElement('tr');
-    const timestamp = d.Timestamp || '';
+    const timestamp = safeValue(d.Timestamp);
     const isNew = !previousTimestamps.has(timestamp);
     if(isNew) tr.classList.add('highlight');
 
-    // Dynamically create td for all keys
     let tdHTML = '';
-    Object.keys(d).forEach(key => {
-      tdHTML += <td class="${key.toLowerCase()==='comments' ? 'comments' : ''}">${safeValue(d[key])}</td>;
+    Object.keys(d).forEach(key=>{
+      tdHTML += <td class="${key.toLowerCase()==='comments'?'comments':''}">${safeValue(d[key])}</td>;
     });
     tr.innerHTML = tdHTML;
     tbody.appendChild(tr);
@@ -144,10 +140,10 @@ function populateTable(data){
   previousTimestamps = newTimestamps;
 }
 
-// Update dashboard only if new submission exists
+// Update dashboard if new submission
 async function updateDashboardIfNew(){
   const data = await fetchFeedback();
-  const newDataExists = data.some(d => !previousTimestamps.has(d.Timestamp));
+  const newDataExists = data.some(d => !previousTimestamps.has(safeValue(d.Timestamp)));
   if(newDataExists){
     document.getElementById('totalFeedback').textContent = data.length;
     document.getElementById('allDayRating').textContent = "⭐ "+calculateAllDayRating(data)+" / 5";
@@ -160,7 +156,7 @@ async function updateDashboardIfNew(){
 // Initial load
 updateDashboardIfNew();
 
-// Poll Google Sheet every 10 seconds to detect new submissions
+// Check for new submissions every 10 seconds
 setInterval(updateDashboardIfNew, 10000);
 </script>
 </body>
