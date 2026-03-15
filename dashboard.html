@@ -2,23 +2,19 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Dairy Queen Feedback Admin Dashboard</title>
+<title>Dairy Queen Feedback Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
-body {font-family:Arial;background:#f6f6f6;margin:0;padding:20px;text-align:center;}
-h1 {color:#d71920;}
-.dashboard{max-width:1300px;margin:auto;background:white;padding:20px;border-radius:10px;box-shadow:0 0 10px rgba(0,0,0,0.1);}
+body{font-family:Arial;background:#f6f6f6;margin:0;padding:20px;text-align:center;}
+h1{color:#d71920;}
+.dashboard{max-width:1000px;margin:auto;background:white;padding:20px;border-radius:10px;box-shadow:0 0 10px rgba(0,0,0,0.1);}
 .metrics{display:flex;justify-content:space-around;margin-bottom:20px;}
-.card{background:#0057a4;color:white;padding:15px;border-radius:8px;width:180px;}
-.charts{display:flex;justify-content:center;flex-wrap:wrap;gap:20px;margin-top:10px;}
+.card{background:#0057a4;color:white;padding:15px;border-radius:8px;width:200px;}
 canvas{background:white;padding:10px;border-radius:8px;box-shadow:0 0 5px rgba(0,0,0,0.1);}
 table{width:100%;margin-top:20px;border-collapse:collapse;}
 th,td{padding:8px;border:1px solid #ddd;font-size:13px;}
 th{background:#d71920;color:white;}
 tr:nth-child(even){background:#f9f9f9;}
-.highlight{background:#fff3a6;animation:fade 2s forwards;}
-@keyframes fade{from{background:#fff3a6;}to{background:white;}}
-.comments{text-align:left;}
 </style>
 </head>
 <body>
@@ -27,34 +23,25 @@ tr:nth-child(even){background:#f9f9f9;}
 <h1>Dairy Queen Feedback Dashboard</h1>
 
 <div class="metrics">
-  <div class="card"><h3>All Day Rating</h3><span id="avgRating">0</span> ⭐</div>
-  <div class="card"><h3>Total Feedback</h3><span id="totalFeedback">0</span></div>
+  <div class="card">
+    <h3>Overall All-Day Rating</h3>
+    <span id="allDayRating">0</span> ⭐
+  </div>
+  <div class="card">
+    <h3>Total Submissions</h3>
+    <span id="totalSubmissions">0</span>
+  </div>
 </div>
 
-<div class="charts">
-  <canvas id="overallChart" width="350" height="180"></canvas>
-  <canvas id="recommendChart" width="220" height="180"></canvas>
-</div>
+<canvas id="avgChart" width="800" height="200"></canvas>
 
-<div class="charts" id="miniCharts"></div>
-
+<h3>Feedback Table</h3>
 <table id="feedbackTable">
 <thead>
 <tr>
 <th>Timestamp</th>
-<th>Q1_ProductQuality</th>
-<th>Q2_Taste</th>
-<th>Q3_MenuVariety</th>
-<th>Q4_ServiceSpeed</th>
-<th>Q5_StaffFriendliness</th>
-<th>Q6_OrderAccuracy</th>
-<th>Q7_Cleanliness</th>
-<th>Q8_StoreAmbience</th>
-<th>Q9_ValueForMoney</th>
-<th>Q10_OverallExperience</th>
-<th>Recommend</th>
 <th>Comments</th>
-<th>Average_Rating</th>
+<th>Average Rating</th>
 </tr>
 </thead>
 <tbody></tbody>
@@ -62,113 +49,82 @@ tr:nth-child(even){background:#f9f9f9;}
 </div>
 
 <script>
-// Replace with your Apps Script Web App URL
-const API_URL = "https://script.google.com/macros/s/AKfycbwAugRaELE4htn7Qqbzc8z3KYLvyFylP2Iqf75kihQx4BuSJ8sNpBHi0EWPMpp9e9z-Ew/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbwAugRaELE4htn7Qqbzc8z3KYLvyFylP2Iqf75kihQx4BuSJ8sNpBHi0EWPMpp9e9z-Ew/exec"; // replace with your Apps Script URL
 
-let previousIDs = new Set();
-
-async function fetchData() {
+async function fetchData(){
   const res = await fetch(API_URL);
   const data = await res.json();
-  return data.map(r=>({
-    Timestamp:r.Timestamp||"",
-    Q1_ProductQuality:Number(r.Q1_ProductQuality)||0,
-    Q2_Taste:Number(r.Q2_Taste)||0,
-    Q3_MenuVariety:Number(r.Q3_MenuVariety)||0,
-    Q4_ServiceSpeed:Number(r.Q4_ServiceSpeed)||0,
-    Q5_StaffFriendliness:Number(r.Q5_StaffFriendliness)||0,
-    Q6_OrderAccuracy:Number(r.Q6_OrderAccuracy)||0,
-    Q7_Cleanliness:Number(r.Q7_Cleanliness)||0,
-    Q8_StoreAmbience:Number(r.Q8_StoreAmbience)||0,
-    Q9_ValueForMoney:Number(r.Q9_ValueForMoney)||0,
-    Q10_OverallExperience:Number(r.Q10_OverallExperience)||0,
-    Recommend:r.Recommend||"",
-    Comments:r.Comments||"",
-    Average_Rating:Number(r.Average_Rating)||0
+  return data.map(r => ({
+    Timestamp: r.Timestamp || "",
+    Comments: r.Comments || "",
+    Average: Number(r.Average_Rating) || 0,
+    Q: [
+      Number(r.Q1_ProductQuality)||0,
+      Number(r.Q2_Taste)||0,
+      Number(r.Q3_MenuVariety)||0,
+      Number(r.Q4_ServiceSpeed)||0,
+      Number(r.Q5_StaffFriendliness)||0,
+      Number(r.Q6_OrderAccuracy)||0,
+      Number(r.Q7_Cleanliness)||0,
+      Number(r.Q8_StoreAmbience)||0,
+      Number(r.Q9_ValueForMoney)||0,
+      Number(r.Q10_OverallExperience)||0
+    ]
   }));
 }
 
-function buildFrequency(list){let freq=[0,0,0,0,0]; list.forEach(v=>{if(v>=1&&v<=5) freq[v-1]++;}); return freq;}
+function renderMetrics(data){
+  const total = data.length;
+  document.getElementById("totalSubmissions").innerText = total;
 
-function renderCharts(data){
-  const overallFreq = buildFrequency(data.map(d=>d.Average_Rating));
-  const recommendYes = data.filter(d=>d.Recommend.toLowerCase()=="yes").length;
-  const recommendNo = data.filter(d=>d.Recommend.toLowerCase()=="no").length;
+  const overallAvg = total? (data.reduce((sum,d)=>sum+d.Average,0)/total).toFixed(2) : 0;
+  document.getElementById("allDayRating").innerText = overallAvg;
+}
 
-  // Overall bar chart
-  if(window.overallChart) window.overallChart.destroy();
-  const ctxOverall = document.getElementById("overallChart").getContext("2d");
-  window.overallChart = new Chart(ctxOverall,{
-    type:"bar",
-    data:{labels:[1,2,3,4,5],datasets:[{label:"Average Rating",data:overallFreq,backgroundColor:"#d71920"}]},
-    options:{responsive:false}
-  });
+function renderAvgChart(data){
+  const questionAvg = [];
+  for(let i=0;i<10;i++){
+    const valid = data.map(d=>d.Q[i]).filter(v=>v>0);
+    const avg = valid.length? (valid.reduce((a,b)=>a+b,0)/valid.length).toFixed(2):0;
+    questionAvg.push(avg);
+  }
 
-  // Recommend pie
-  if(window.recommendChart) window.recommendChart.destroy();
-  const ctxRec = document.getElementById("recommendChart").getContext("2d");
-  window.recommendChart = new Chart(ctxRec,{
-    type:"pie",
-    data:{labels:["Yes","No"],datasets:[{data:[recommendYes,recommendNo],backgroundColor:["#0057a4","#d71920"]}]},
-    options:{responsive:false}
-  });
-
-  // Mini charts for 10 questions
-  const miniDiv = document.getElementById("miniCharts");
-  miniDiv.innerHTML="";
-  const questions = ["Q1_ProductQuality","Q2_Taste","Q3_MenuVariety","Q4_ServiceSpeed","Q5_StaffFriendliness","Q6_OrderAccuracy","Q7_Cleanliness","Q8_StoreAmbience","Q9_ValueForMoney","Q10_OverallExperience"];
-  const colors = ["#f94144","#f3722c","#f8961e","#f9844a","#f9c74f","#90be6d","#43aa8b","#4d908e","#577590","#277da1"];
-  questions.forEach((q,i)=>{
-    const canvas=document.createElement("canvas");
-    canvas.width=150; canvas.height=120;
-    miniDiv.appendChild(canvas);
-    const ctx=canvas.getContext("2d");
-    const freq = buildFrequency(data.map(d=>d[q]));
-    new Chart(ctx,{type:"bar",data:{labels:[1,2,3,4,5],datasets:[{data:freq,backgroundColor:colors[i]}]},options:{plugins:{legend:{display:false}},responsive:false}});
+  const ctx = document.getElementById("avgChart").getContext("2d");
+  if(window.avgChart) window.avgChart.destroy();
+  window.avgChart = new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels:["Q1","Q2","Q3","Q4","Q5","Q6","Q7","Q8","Q9","Q10"],
+      datasets:[{label:"Average Rating per Question",data:questionAvg,backgroundColor:"#d71920"}]
+    },
+    options:{scales:{y:{min:0,max:5}}}
   });
 }
 
-function populateTable(data){
+function renderTable(data){
   const tbody=document.querySelector("#feedbackTable tbody");
   tbody.innerHTML="";
   data.sort((a,b)=>new Date(b.Timestamp)-new Date(a.Timestamp));
-  let newIDs = new Set();
-  data.forEach(row=>{
+  data.forEach(d=>{
     const tr=document.createElement("tr");
-    if(!previousIDs.has(row.Timestamp)) tr.classList.add("highlight");
-    tr.innerHTML=`
-      <td>${row.Timestamp}</td>
-      <td>${row.Q1_ProductQuality}</td>
-      <td>${row.Q2_Taste}</td>
-      <td>${row.Q3_MenuVariety}</td>
-      <td>${row.Q4_ServiceSpeed}</td>
-      <td>${row.Q5_StaffFriendliness}</td>
-      <td>${row.Q6_OrderAccuracy}</td>
-      <td>${row.Q7_Cleanliness}</td>
-      <td>${row.Q8_StoreAmbience}</td>
-      <td>${row.Q9_ValueForMoney}</td>
-      <td>${row.Q10_OverallExperience}</td>
-      <td>${row.Recommend}</td>
-      <td>${row.Comments}</td>
-      <td>${row.Average_Rating.toFixed(2)}</td>
-    `;
+    tr.innerHTML=`<td>${d.Timestamp}</td><td>${d.Comments}</td><td>${d.Average.toFixed(2)}</td>`;
     tbody.appendChild(tr);
-    newIDs.add(row.Timestamp);
   });
-  previousIDs=newIDs;
-  document.getElementById("totalFeedback").innerText=data.length;
-  document.getElementById("avgRating").innerText=(data.reduce((sum,d)=>sum+d.Average_Rating,0)/data.length).toFixed(2);
 }
 
 async function updateDashboard(){
-  const data=await fetchData();
-  renderCharts(data);
-  populateTable(data);
+  const data = await fetchData();
+  renderMetrics(data);
+  renderAvgChart(data);
+  renderTable(data);
 }
 
 // Initial load
 updateDashboard();
+
+// Refresh every 10 seconds
 setInterval(updateDashboard,10000);
+
 </script>
 </body>
 </html>
